@@ -23,18 +23,13 @@ namespace tribase {
 
 
 
-Index::Index(size_t d, size_t nlist, size_t nprobe, MetricType metric, OptLevel opt_level, size_t sub_k,
-             size_t sub_nlist, size_t sub_nprobe, bool verbose, EdgeDevice edge_device_enabled)
+Index::Index(size_t d, size_t nlist, size_t nprobe, MetricType metric, bool verbose)
     : d(d),
       nlist(nlist),
       nprobe(nprobe),
       metric(metric),
-      opt_level(opt_level),
-      sub_k(sub_k),
-      sub_nlist(sub_nlist),
-      sub_nprobe(sub_nprobe),
-      verbose(verbose),
-      edge_device_enabled(edge_device_enabled) {
+      verbose(verbose)
+{
     // nlist个聚类，IVF是一个聚类里面的所有点
     lists = std::make_unique<IVF[]>(nlist);
     // code是向量，nlist个向量，每个向量d维
@@ -82,7 +77,7 @@ void Index::preSearch(size_t nb, size_t workerCount, size_t blockCount, size_t w
     // }
 
     MyStopWatch watch(true);
-    if(param->mode == SearchMode::DIVIDE_IVF) {
+    if(param->mode == SearchMode::DIVIDE_VECTOR) {
 
         for(size_t rank = 1; rank <= workerCount; rank++) {
             size_t beginIVF = (rank - 1) * (nlist / workerCount); 
@@ -909,120 +904,8 @@ void Index::add(size_t n, const float* codes) {
 
             const float* centroid_code = centroid_codes.get() + listid * d;
 
-            if (opt_level & OptLevel::OPT_SUBNN_L2) {
-                Index sub_index(d, this_sub_nlist_L2, this_sub_nprobe_L2, MetricType::METRIC_L2, OptLevel::OPT_NONE, 0,
-                                0, 0, false);
-                Stopwatch watch;
-                sub_index.train(nb, xb);
-#pragma omp atomic
-                train_elapsed += watch.elapsedSeconds(true);
-                sub_index.add(nb, xb);
-#pragma omp atomic
-                add_elapsed += watch.elapsedSeconds(true);
-                sub_index.search(nb, xb, sub_k, list.sub_nearest_L2_dis.get(), list.sub_nearest_L2_id.get());
-#pragma omp atomic
-                search_elapsed += watch.elapsedSeconds(true);
 
-#ifdef SUB_STATS
-                if (verbose) {
-                    size_t recall_nb = static_cast<size_t>(1.0 * nb * RECALL_TEST_RATIO / sub_nlist * sub_nprobe);
-                    std::unique_ptr<float[]> recall_dis = std::make_unique<float[]>(recall_nb * sub_k);
-                    std::unique_ptr<idx_t[]> recall_id = std::make_unique<idx_t[]>(recall_nb * sub_k);
-                    sub_index.nprobe = sub_index.nlist;
-                    sub_index.search(recall_nb, xb, sub_k, recall_dis.get(), recall_id.get());
 
-                    for (size_t j = 0; j < recall_nb; j++) {
-                        float top_recall_dis = recall_dis[j * sub_k + sub_k - 1];
-                        float top_recall_dis_5 = recall_dis[j * sub_k + std::min(4ul, sub_k - 1)];
-                        for (size_t k = 0; k < sub_k; k++) {
-                            float dis = list.get_sub_nearest_L2_dis(j, k);
-                            if (dis <= top_recall_dis) {
-                                total_sub_recall_l2++;
-                                if (dis <= top_recall_dis_5 && k < 5) {
-                                    total_sub_recall_l2_5++;
-                                }
-                            }
-                        }
-                    }
-                    total_sub_count_l2 += recall_nb * sub_k;
-                    total_sub_count_l2_5 += recall_nb * std::min(5ul, sub_k);
-                }
-#endif
-
-                for (size_t j = 0; j < nb * sub_k; j++) {
-                    list.sub_nearest_L2_dis[j] = sqrt(list.sub_nearest_L2_dis[j]);
-                }
-            }
-
-            if (opt_level & OptLevel::OPT_SUBNN_IP) {
-                std::unique_ptr<float[]> norm_xb_u = std::make_unique<float[]>(nb * d);
-                float* norm_xb = norm_xb_u.get();
-                for (size_t j = 0; j < nb; j++) {
-                    float norm_xb_value = 0;
-                    const float* x = xb + j * d;
-                    for (size_t k = 0; k < d; k++) {
-                        norm_xb[j * d + k] = (x[k] - centroid_code[k]);
-                        norm_xb_value += norm_xb[j * d + k] * norm_xb[j * d + k];
-                    }
-
-                    norm_xb_value = sqrt(norm_xb_value);
-                    if (norm_xb_value > 0) {
-                        for (size_t k = 0; k < d; k++) {
-                            norm_xb[j * d + k] /= norm_xb_value;
-                        }
-                    }
-                }
-                Index sub_index(d, this_sub_nlist_IP, this_sub_nprobe_IP, MetricType::METRIC_IP, OptLevel::OPT_NONE, 0,
-                                0, 0, false);  // TODO: this_sub_nlist_L2 or this_sub_nlist_IP
-                Stopwatch watch;
-                sub_index.train(nb, norm_xb);
-#pragma omp atomic
-                train_elapsed += watch.elapsedSeconds(true);
-                sub_index.add(nb, norm_xb);
-#pragma omp atomic
-                add_elapsed += watch.elapsedSeconds(true);
-                sub_index.search(nb, norm_xb, sub_k, list.sub_nearest_IP_dis.get(), list.sub_nearest_IP_id.get());
-#pragma omp atomic
-                search_elapsed += watch.elapsedSeconds(true);
-
-                for (size_t j = 0; j < nb * d; j++) {
-                    norm_xb[j] = -norm_xb[j];
-                }
-
-                watch.reset();
-                sub_index.search(nb, norm_xb, sub_k, list.sub_farest_IP_dis.get(), list.sub_farest_IP_id.get());
-                search_elapsed += watch.elapsedSeconds(true);
-
-                for (size_t j = 0; j < nb * sub_k; j++) {
-                    list.sub_farest_IP_dis[j] = -list.sub_farest_IP_dis[j];
-                }
-
-#ifdef SUB_STATS
-                if (verbose) {
-                    size_t recall_nb = static_cast<size_t>(1.0 * nb * RECALL_TEST_RATIO / sub_nlist * sub_nprobe);
-                    std::unique_ptr<float[]> recall_dis = std::make_unique<float[]>(recall_nb * sub_k);
-                    std::unique_ptr<idx_t[]> recall_id = std::make_unique<idx_t[]>(recall_nb * sub_k);
-                    sub_index.nprobe = sub_index.nlist;
-                    sub_index.search(recall_nb, norm_xb, sub_k, recall_dis.get(), recall_id.get());
-
-                    for (size_t j = 0; j < recall_nb; j++) {
-                        float top_recall_dis = recall_dis[j * sub_k + sub_k - 1];
-                        float top_recall_dis_5 = recall_dis[j * sub_k + std::min(4ul, sub_k - 1)];
-                        for (size_t k = 0; k < sub_k; k++) {
-                            float dis = list.get_sub_nearest_IP_dis(j, k);
-                            if (dis >= top_recall_dis) {
-                                total_sub_recall_ip++;
-                                if (dis >= top_recall_dis_5 && k < 5) {
-                                    total_sub_recall_ip_5++;
-                                }
-                            }
-                        }
-                    }
-                    total_sub_count_ip += recall_nb * sub_k;
-                    total_sub_count_ip_5 += recall_nb * std::min(5ul, sub_k);
-                }
-#endif
-            }
 
 #pragma omp critical
             {
@@ -1995,7 +1878,7 @@ Stats Index::search(size_t n, const float* queries, size_t k, float* distances, 
             std::cout << BLUE << "block version of search" << RESET << std::endl;
             single_thread_search_block(n, queries, k, distances, labels);
             return Stats();
-        } else if (param->mode == SearchMode::DIVIDE_IVF) {
+        } else if (param->mode == SearchMode::DIVIDE_VECTOR) {
             std::cout << BLUE << "Divide IVF version of search" << RESET << std::endl;
             search_divide_ivf(n, queries, k, distances, labels);
             return Stats();

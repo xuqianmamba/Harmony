@@ -1043,4 +1043,37 @@ inline std::vector<int> distribute_jobs(int total_jobs, int num_workers, float u
     return jobs;
 }
 
+enum class SearchMode {
+    ORIGINAL,
+    DIVIDE_VECTOR,
+    DIVIDE_DIM,
+    DIVIDE_GROUP,
+};
+inline std::string to_string(SearchMode mode) {
+    switch (mode) {
+        case SearchMode::ORIGINAL: return "Original";
+        case SearchMode::DIVIDE_VECTOR: return "Divide_Vector";
+        case SearchMode::DIVIDE_DIM: return "Divide_Dim";
+        case SearchMode::DIVIDE_GROUP: return "Divide_Group";
+        default: return "Unknown";
+    }
+}
+inline SearchMode toMode(std::string str) {
+    if(str == "original") {
+        return SearchMode::ORIGINAL;
+    } else if (str == "dim") {
+        return SearchMode::DIVIDE_DIM;
+    } else if (str == "vector") {
+        return SearchMode::DIVIDE_VECTOR;
+    } else {
+        return SearchMode::DIVIDE_GROUP;
+    }
+}
+
+inline bool str_lower_equal(const std::string& a, const std::string& b) {
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+                      [](char a, char b) { return std::tolower(a) == std::tolower(b); });
+}
+
+
 }  // namespace tribase

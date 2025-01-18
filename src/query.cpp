@@ -18,20 +18,15 @@
 
 using namespace tribase;
 using namespace std;
-bool str_lower_equal(const std::string& a, const std::string& b) {
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(),
-                      [](char a, char b) { return std::tolower(a) == std::tolower(b); });
-}
 
 
-
-int workerMain(int rank, bool cut, Index::SearchMode mode, bool blockSend) {
+int workerMain(int rank, bool cut, SearchMode mode, bool blockSend) {
     
-    if(mode == Index::SearchMode::DIVIDE_IVF) {
+    if(mode == SearchMode::DIVIDE_VECTOR) {
         BaseWorker worker; 
         worker.init(rank);
         worker.search();
-    } else if (mode == Index::SearchMode::DIVIDE_DIM) {
+    } else if (mode == SearchMode::DIVIDE_DIM) {
         Worker node;
         node.init(rank, blockSend);
         // node.uniWatch.print("workerMain", false);
@@ -49,9 +44,9 @@ int workerMain(int rank, bool cut, Index::SearchMode mode, bool blockSend) {
 int main(int argc, char* argv[]) {
     
     argparse::ArgumentParser program("tribase");
+
     program.add_argument("--benchmarks_path")
-        .help("benchmarks path")
-        .default_value(std::string("/home/xuqian/Triangle/benchmarks"));
+        .help("benchmarks path");
     program.add_argument("--dataset").help("dataset name").default_value(std::string("msong"));
     program.add_argument("--input_format").help("format of the dataset").default_value(std::string("fvecs"));
     program.add_argument("--output_format").help("format of the output").default_value(std::string("bin"));
@@ -64,17 +59,8 @@ int main(int argc, char* argv[]) {
         .nargs(0, 100)
         .help("number of clusters to search")
         .scan<'u', size_t>();
-    program.add_argument("--opt_levels")
-        .default_value(std::vector<std::string>({"OPT_NONE", "OPT_TRIANGLE", "OPT_SUBNN_L2", "OPT_SUBNN_IP",
-                                                    "OPT_TRI_SUBNN_L2", "OPT_TRI_SUBNN_IP", "OPT_ALL"}))
-        .nargs(0, 10)
-        .help("optimization levels");
     program.add_argument("--train_only").default_value(false).implicit_value(true).help("train only");
     program.add_argument("--cache").default_value(false).implicit_value(true).help("use cached index");
-    program.add_argument("--sub_nprobe_ratio")
-        .default_value(1.0f)
-        .help("ratio of the number of subNNs to the number of clusters")
-        .action([](const std::string& value) -> float { return std::stof(value); });
     program.add_argument("--metric").default_value("l2").help("metric type");
     program.add_argument("--run_faiss").default_value(false).implicit_value(true).help("run faiss");
     program.add_argument("--loop").default_value(1ul).action(
@@ -82,30 +68,16 @@ int main(int argc, char* argv[]) {
     program.add_argument("--nlist").default_value(0ul).action(
         [](const std::string& value) -> size_t { return std::stoul(value); });
     program.add_argument("--verbose").default_value(false).implicit_value(true).help("verbose");
-    program.add_argument("--ratios")
-        .default_value(std::vector<float>({1.0f}))
-        .nargs(0, 100)
-        .help("search ratio")
-        .scan<'f', float>();
     program.add_argument("--csv").help("csv result file").default_value(std::string(""));
     program.add_argument("--dataset_info")
         .help("only output dataset-info to csv file")
         .default_value(false)
         .implicit_value(true);
     program.add_argument("--early_stop").help("early stop").default_value(false).implicit_value(true);
-    // program.add_argument("--block").help("simple version").default_value(false).implicit_value(true);
-    // program.add_argument("--node")
-    //     .help("number of worker nodes")
-    //     .default_value(0ul)
-    //     .action([](const std::string& value) -> size_t { return std::stoul(value); });
     program.add_argument("--block")
         .help("number of blocks")
         .default_value(0ul)
         .action([](const std::string& value) -> size_t { return std::stoul(value); });
-    // program.add_argument("--sync")
-    //     .help("sync after block search")
-    //     .default_value(false)
-    //     .implicit_value(true);
     program.add_argument("--warmup_list_size")
         .help("how many vectors in a list are used to warmup heap")
         .default_value(0ul)
@@ -114,7 +86,7 @@ int main(int argc, char* argv[]) {
         .help("how many lists are used to warmup heap")
         .default_value(0ul)
         .action([](const std::string& value) -> size_t { return std::stoul(value); });
-    program.add_argument("--cut")
+    program.add_argument("--prune")
         .help("set pruning enabled")
         .default_value(false)
         .implicit_value(true);
@@ -122,13 +94,6 @@ int main(int argc, char* argv[]) {
         .help("disable block search order optimization")
         .default_value(false)
         .implicit_value(true);
-    // program.add_argument("--divideIVF")
-    //     .help("disable search order optimization")
-    //     .default_value(false)
-    //     .implicit_value(true);
-    // program.add_argument("--period")
-    //     .default_value(false)
-    //     .implicit_value(true);
     program.add_argument("--inBalance")
         .default_value(false)
         .implicit_value(true);
@@ -151,7 +116,7 @@ int main(int argc, char* argv[]) {
     program.add_argument("--mode")
            .help("The mode of search")
            .default_value(std::string("original"))
-           .choices("base", "group", "block", "original"); // Only these choices are valid
+           .choices("vector", "group", "dim", "original"); // Only these choices are valid
     program.add_argument("--HardInBalance")
         .help("enable hard inBalance")
         .default_value(false)
@@ -176,7 +141,7 @@ int main(int argc, char* argv[]) {
     
 
     int pro;
-    // MPI_Init(&argc, &argv);
+
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &pro);
     
     // Get the rank (ID) of the current process
@@ -184,12 +149,11 @@ int main(int argc, char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &workerCount);  
     workerCount--;
+    
 
-    // bool divideIVF = program.get<bool>("divideIVF");
     bool disableOrderOptimize = program.get<bool>("disableOrderOpt");
-    bool cut = program.get<bool>("cut");
+    bool prune = program.get<bool>("prune");
     bool run_faiss = program.get<bool>("run_faiss");
-    // bool period = program.get<bool>("period");
     bool inBalance = program.get<bool>("inBalance");
     bool hardInBalance = program.get<bool>("HardInBalance");
     size_t hardInBalanceTeam = program.get<size_t>("HardInBalanceTeam");
@@ -201,35 +165,32 @@ int main(int argc, char* argv[]) {
     bool blockSend = program.get<bool>("blockSend");
     bool fullWarmUp = program.get<bool>("fullWarmUp");
 
-    char* job_id = std::getenv("SLURM_JOB_ID");
-    char* node_list = std::getenv("SLURM_JOB_NODELIST");
-    char* num_nodes = std::getenv("SLURM_NNODES");
-
     size_t groupCount = program.get<size_t>("group");
     size_t teamCount = program.get<size_t>("team");
     size_t teamSize = workerCount / teamCount;
     size_t blockCount = program.get<size_t>("block");
 
     std::string mode = program.get<std::string>("--mode");
-    Index::SearchMode searchMode = Index::SearchMode::DIVIDE_GROUP;
-    if(mode == "original") {
-        cout << YELLOW << "Mode: Original" << RESET << endl;
-        searchMode = Index::SearchMode::ORIGINAL;
-        if(workerCount > 0) {
-            cerr << "worker should be 0" << endl;
-            return 1;
-        }
-    } else if (mode == "block") {
-        cout << YELLOW << "Mode: Block" << RESET << endl;
-        searchMode = Index::SearchMode::DIVIDE_DIM;
-    } else if (mode == "base") {
-        cout << YELLOW << "Mode: Baseline" << RESET << endl;
-        groupCount = workerCount;
-        searchMode = Index::SearchMode::DIVIDE_IVF;
-    } else {
-        cout << YELLOW << "Mode: Group" << RESET << endl;
-        searchMode = Index::SearchMode::DIVIDE_GROUP;
-    }
+    SearchMode searchMode;
+    // if(mode == "original") {
+    //     cout << YELLOW << "Mode: Original" << RESET << endl;
+    //     searchMode = Index::SearchMode::ORIGINAL;
+    //     if(workerCount > 0) {
+    //         cerr << "worker should be 0" << endl;
+    //         return 1;
+    //     }
+    // } else if (mode == "block") {
+    //     cout << YELLOW << "Mode: Block" << RESET << endl;
+    //     searchMode = Index::SearchMode::DIVIDE_DIM;
+    // } else if (mode == "base") {
+    //     cout << YELLOW << "Mode: Baseline" << RESET << endl;
+    //     groupCount = workerCount;
+    //     searchMode = Index::SearchMode::DIVIDE_IVF;
+    // } else {
+    //     cout << YELLOW << "Mode: Group" << RESET << endl;
+    //     searchMode = Index::SearchMode::DIVIDE_GROUP;
+    // }
+
 
     if(workerCount % teamCount != 0) {
         cerr << "worker should divide team count" << endl;
@@ -265,15 +226,15 @@ int main(int argc, char* argv[]) {
     if (rank != 0) {
         if(!run_faiss) {
             MPI_Barrier(MPI_COMM_WORLD);
-            workerMain(rank, cut, searchMode, blockSend);
+            workerMain(rank, prune, searchMode, blockSend);
         }
     } else {
         // MyStopWatch watch(true, "queryWatch", CRAN);
-        if (job_id && node_list && num_nodes) {
-            std::cout << "Job ID: " << job_id << std::endl;
-            std::cout << "Nodes List: " << node_list << std::endl;
-            std::cout << "Number of Nodes: " << num_nodes << std::endl;
-        } 
+        // if (job_id && node_list && num_nodes) {
+        //     std::cout << "Job ID: " << job_id << std::endl;
+        //     std::cout << "Nodes List: " << node_list << std::endl;
+        //     std::cout << "Number of Nodes: " << num_nodes << std::endl;
+        // } 
 
         std::cout << "Arguments passed to the program:" << std::endl;
         for (int i = 0; i < argc; i++) {
@@ -282,16 +243,16 @@ int main(int argc, char* argv[]) {
         cout << CRAN << "master main, node count: " << workerCount << RESET << endl;
         
         std::vector<size_t> nprobes = program.get<std::vector<size_t>>("nprobes");
-        std::vector<std::string> opt_levels_str = program.get<std::vector<std::string>>("opt_levels");
-        std::vector<float> ratios = program.get<std::vector<float>>("ratios");
+        // std::vector<std::string> opt_levels_str = program.get<std::vector<std::string>>("opt_levels");
+        // std::vector<float> ratios = program.get<std::vector<float>>("ratios");
 
         size_t k = program.get<size_t>("k");
 
-        std::vector<OptLevel> opt_levels;
-        for (const auto& opt_level_str : opt_levels_str) {
-            opt_levels.push_back(str2OptLevel(opt_level_str));
-        }
-        OptLevel added_opt_levels = OptLevel::OPT_NONE;
+        // std::vector<OptLevel> opt_levels;
+        // for (const auto& opt_level_str : opt_levels_str) {
+        //     opt_levels.push_back(str2OptLevel(opt_level_str));
+        // }
+        // OptLevel added_opt_levels = OptLevel::OPT_NONE;
 
         std::string benchmarks_path = program.get<std::string>("benchmarks_path");
         std::string dataset = program.get<std::string>("dataset");
@@ -299,19 +260,19 @@ int main(int argc, char* argv[]) {
         std::string output_format = program.get<std::string>("output_format");
         std::string metric_str = program.get<std::string>("metric");
         MetricType metric;
-        size_t loop = program.get<size_t>("loop");
+        // size_t loop = program.get<size_t>("loop");
         size_t nlist = program.get<size_t>("nlist");
         bool verbose = program.get<bool>("verbose");
-        bool early_stop = program.get<bool>("early_stop");
+        // bool early_stop = program.get<bool>("early_stop");
         // bool block_version = program.get<bool>("block");
         // size_t nodeCount = program.get<size_t>("node");
         // bool sync = program.get<bool>("sync");
         
 
         std::cout << BLUE << "number of nodes : " << workerCount << RESET << std::endl;
-        if (early_stop && (ratios[0] != 1 || ratios.size() != 1)) {
-            throw std::invalid_argument("early_stop is only allowed when ratios is 1.0");
-        }
+        // if (early_stop && (ratios[0] != 1 || ratios.size() != 1)) {
+        //     throw std::invalid_argument("early_stop is only allowed when ratios is 1.0");
+        // }
 
         if (str_lower_equal(metric_str, "l2")) {
             metric = MetricType::METRIC_L2;
@@ -323,7 +284,7 @@ int main(int argc, char* argv[]) {
 
         bool train_only = program.get<bool>("train_only");
         bool cache = program.get<bool>("cache");
-        float sub_nprobe_ratio = program.get<float>("sub_nprobe_ratio");
+        // float sub_nprobe_ratio = program.get<float>("sub_nprobe_ratio");
 
         // std::string inBalanceString = inBalance ? "InBalance" : "";
         std::string inBalanceString = inBalance ? "InBalance" : (hardInBalance ? "Hard" : "");
@@ -403,18 +364,18 @@ int main(int argc, char* argv[]) {
             nprobes.back() = nlist;
         }
 
-        size_t sub_nlist = std::sqrt(nb / nlist);
-        size_t sub_nprobe = std::max(static_cast<size_t>(sub_nlist * sub_nprobe_ratio), 1ul);
-        if (verbose) {
-            std::cout << std::format("sub_nlist: {} sub_nprobe: {}", sub_nlist, sub_nprobe) << std::endl;
-        }
+        // size_t sub_nlist = std::sqrt(nb / nlist);
+        // size_t sub_nprobe = std::max(static_cast<size_t>(sub_nlist * sub_nprobe_ratio), 1ul);
+        // if (verbose) {
+        //     std::cout << std::format("sub_nlist: {} sub_nprobe: {}", sub_nlist, sub_nprobe) << std::endl;
+        // }
 
-        for (const OptLevel& opt_level : opt_levels) {
-            added_opt_levels = static_cast<OptLevel>(static_cast<int>(added_opt_levels) | static_cast<int>(opt_level));
-        }
-        if (verbose) {
-            std::cout << std::format("Added optimization levels: {}", static_cast<int>(added_opt_levels)) << std::endl;
-        }
+        // for (const OptLevel& opt_level : opt_levels) {
+        //     added_opt_levels = static_cast<OptLevel>(static_cast<int>(added_opt_levels) | static_cast<int>(opt_level));
+        // }
+        // if (verbose) {
+        //     std::cout << std::format("Added optimization levels: {}", static_cast<int>(added_opt_levels)) << std::endl;
+        // }
         // nprobes.clear();
         // for (size_t val = 1; val <= nlist / 2; val *= 2) {
         //     nprobes.push_back(val);
@@ -422,17 +383,17 @@ int main(int argc, char* argv[]) {
         // nprobes.push_back(nlist);
 
         auto get_index_path = [&]() {
-            int target = static_cast<int>(added_opt_levels);
-            for (int i = 0; i < 8; i++) {
-                // target is a subset of i
-                if ((target & i) == target) {
-                    std::string index_path = std::format("{}/{}/index/index_nlist_{}_opt_{}_subNprobeRatio_{}.index",
-                                                         benchmarks_path, dataset, nlist, i, sub_nprobe_ratio);
-                    if (std::filesystem::exists(index_path)) {
-                        return index_path;
-                    }
-                }
-            }
+            // int target = static_cast<int>(added_opt_levels);
+            // for (int i = 0; i < 8; i++) {
+            //     // target is a subset of i
+            //     if ((target & i) == target) {
+            //         std::string index_path = std::format("{}/{}/index/index_nlist_{}_opt_{}_subNprobeRatio_{}.index",
+            //                                              benchmarks_path, dataset, nlist, i, sub_nprobe_ratio);
+            //         if (std::filesystem::exists(index_path)) {
+            //             return index_path;
+            //         }
+            //     }
+            // }
             return std::format("{}/{}/index/index_nlist_{}_opt_{}_subNprobeRatio_{}.index", benchmarks_path, dataset,
                                nlist, target, sub_nprobe_ratio);
         };
@@ -645,7 +606,7 @@ int main(int argc, char* argv[]) {
             // Index train, save index file
             std::tie(base, nb, d) = loadXvecs(base_path);
             nlist = static_cast<size_t>(std::sqrt(nb));
-            index = Index(d, nlist, 0, metric, added_opt_levels, OPT_ALL, sub_nlist, sub_nprobe, verbose);
+            index = Index(d, nlist, 0, metric, verbose);
             index.train(nb, base.get());
             // if (block_version) {
             //     index.add_simple(nb, base.get());
@@ -670,19 +631,19 @@ int main(int argc, char* argv[]) {
         auto doSearch = [&](auto nprobe, auto opt_level, auto ratio, auto early_stop_flag, auto f_time, float* distances, idx_t* labels, Index::Param* param) -> Stats {
            
             auto path = std::format("{}/{}/index/index_nlist_{}_{}.index", benchmarks_path, dataset,
-                               nlist, index.to_string(param->mode));
+                               nlist, to_string(param->mode));
             index.preSearch(nb, workerCount, blockCount, warmUpSearchList, warmUpSearchListSize, param, path);
             // if(!std::filesystem::exists(path)) {
             //     index.save_index(path, param->mode);
             // }
-            if (loop > 1) {
-                index.search(nq, query.get(), k, distances, labels, ratio);
-            }
+            // if (loop > 1) {
+            //     index.search(nq, query.get(), k, distances, labels, ratio);
+            // }
             Stopwatch stopwatch;
             Stats stats;
-            for (size_t j = 0; j < loop; j++) {
-                stats = index.search(nq, query.get(), k, distances, labels, ratio);
-            }
+            // for (size_t j = 0; j < loop; j++) {
+            stats = index.search(nq, query.get(), k, distances, labels, ratio);
+            // }
             
             double search_time = stopwatch.elapsedSeconds() / loop;
             index.postSearch();
@@ -695,19 +656,19 @@ int main(int argc, char* argv[]) {
             stats.nprobe = nprobe;
             stats.query_time = search_time;
             stats.faiss_query_time = f_time;
-            stats.opt_level = opt_level;
+            // stats.opt_level = opt_level;
             stats.recall = recall;
             stats.r2 = r2;
             stats.block = blockCount;
             stats.worker = workerCount;
             stats.disableOrderOptimize = disableOrderOptimize;
             // stats.divideIVF = divideIVF;
-            stats.cut = cut;
-            stats.nodeList = node_list;
+            stats.cut = prune;
+            // stats.nodeList = node_list;
             stats.nb = nb;
             stats.nq = nq;
             stats.d = d;
-            stats.mode = Index::to_string(param->mode);
+            stats.mode = to_string(param->mode);
             stats.group = groupCount;
             stats.team = teamCount;
             stats.blockSend = blockSend;
@@ -733,7 +694,7 @@ int main(int argc, char* argv[]) {
                     std::unique_ptr<idx_t[]> labels = std::make_unique<idx_t[]>(nq * k);
 
                     Index::Param oriParam;
-                    oriParam.mode = Index::SearchMode::ORIGINAL;
+                    oriParam.mode = SearchMode::ORIGINAL;
                     Stats oriStat = doSearch(nprobe, opt_level, ratio, early_stop_flag, f_time, distances.get(), labels.get(), &oriParam);
 
                     std::cout << YELLOW;
@@ -749,7 +710,7 @@ int main(int argc, char* argv[]) {
                     param.orderOptimize = !disableOrderOptimize;
                     param.mode = searchMode;
                     // param.period = period;
-                    param.cut = cut;
+                    param.cut = prune;
                     param.fullWarmUp = fullWarmUp;
                     param.groupCount = groupCount;
                     param.teamCount = teamCount;

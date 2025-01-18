@@ -18,32 +18,14 @@ class Index {
           size_t nlist = 0,
           size_t nprobe = 0,
           MetricType metric = MetricType::METRIC_L2,
-          OptLevel opt_level = OptLevel::OPT_NONE,
-          size_t sub_k = 0,
-          size_t sub_nlist = 1,
-          size_t sub_nprobe = 1,
-          bool verbose = false,
-          EdgeDevice edge_device_enabled = EdgeDevice::EDGEDEVIVE_DISABLED
+          bool verbose = false
           );
 
     Index& operator=(Index&& other) noexcept;
     
-    enum class SearchMode {
-        ORIGINAL,
-        DIVIDE_IVF,
-        DIVIDE_DIM,
-        DIVIDE_GROUP,
-    };
+    
 
-    static std::string to_string(SearchMode mode) {
-        switch (mode) {
-            case SearchMode::ORIGINAL: return "Original";
-            case SearchMode::DIVIDE_IVF: return "Baseline";
-            case SearchMode::DIVIDE_DIM: return "Dim     ";
-            case SearchMode::DIVIDE_GROUP: return "Group   ";
-            default: return "Unknown";
-        }
-    }
+    
 
     struct Param {
         bool orderOptimize = true;
