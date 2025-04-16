@@ -43,7 +43,7 @@ TEST(IndexTest, L2NodeTest) {
 
     auto start = std::chrono::high_resolution_clock::now();
     index.nprobe = nlist;
-    Stats stats = index.search(nq, queries.get(), k, dis.get(), ids.get()); //here
+    Stats stats = index.search(nq, queries.get(), k, dis.get(), ids.get(), 1, true); //here
     auto end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1e6;
 

@@ -345,6 +345,7 @@ public:
     // std::unique_ptr<size_t[]> queryCompareSizePreSum;
     std::unique_ptr<float[]> distances;
     std::unique_ptr<idx_t[]> labels;
+    std::unique_ptr<float[]> heapTops;
 
     InitInfo info;
 
@@ -355,11 +356,13 @@ public:
 
     double waitTime = 0, searchTime = 0;
 
+    bool cut = false;
+
     // void init(int rank, tribase::Index* index) {
     void init(int rank);
     
     
-    void single_thread_search_simple(size_t n, const float* queries, size_t k, float* distances, idx_t* labels, idx_t* listidqueries);
+    void single_thread_search_simple(size_t n, const float* queries, size_t k, float* distances, idx_t* labels, idx_t* listidqueries, float* heapTops);
     void single_thread_search_fast(size_t n, const float* queries, size_t k, float* distances, idx_t* labels, idx_t* listidqueries);
     // void single_thread_search_simple(size_t n, const float* queries, size_t k, float* distances, idx_t* labels) {
 
@@ -444,7 +447,7 @@ public:
     //     // }
     // }
 
-    void search();
+    void search(bool cut);
 //     void search() {
 //         uniWatch.print(format("node {} start search", rank), false);
 
@@ -624,6 +627,7 @@ public:
 
     bool blockSend = false;
     bool cut = false;
+    bool minorCut = false;
 
     std::unique_ptr<float[]> heapTops;
 
@@ -641,7 +645,7 @@ public:
         copy_n_partial_vector(querys, this->querys.get(), info.d, info.block_dim, info.block_dim * (info.rankInsideTeam - 1), nq);
     }
 
-    void search(bool cut);
+    void search(bool cut, bool minorCut);
     
 
     idx_t getBlockQueryCompareSize(size_t groupId, size_t blockId) {

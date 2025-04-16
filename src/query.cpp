@@ -25,12 +25,12 @@ bool str_lower_equal(const std::string& a, const std::string& b) {
 
 
 
-int workerMain(int rank, bool cut, Index::SearchMode mode, bool blockSend) {
+int workerMain(int rank, bool cut, Index::SearchMode mode, bool blockSend, bool minorCut) {
     
     if(mode == Index::SearchMode::DIVIDE_IVF) {
         BaseWorker worker; 
         worker.init(rank);
-        worker.search();
+        worker.search(cut);
     } else if (mode == Index::SearchMode::DIVIDE_DIM) {
         Worker node;
         node.init(rank, blockSend);
@@ -41,7 +41,7 @@ int workerMain(int rank, bool cut, Index::SearchMode mode, bool blockSend) {
         GroupWorker worker;
         worker.init(rank, blockSend);
         worker.receiveQuery();
-        worker.search(cut);
+        worker.search(cut, minorCut);
         // node.postSearch();
     }
     return 0;
@@ -118,6 +118,10 @@ int main(int argc, char* argv[]) {
         .help("set pruning enabled")
         .default_value(false)
         .implicit_value(true);
+    program.add_argument("--minorCut")
+        .help("set pruning enabled")
+        .default_value(false)
+        .implicit_value(true);
     program.add_argument("--disableOrderOpt")
         .help("disable block search order optimization")
         .default_value(false)
@@ -158,7 +162,12 @@ int main(int argc, char* argv[]) {
         .implicit_value(true);
     program.add_argument("--HardInBalanceRatio")
         .help("control how inbalanced the search would be, 0.0 is perfectly balanced")
-        .default_value(1.0f)
+        .default_value(0.0f)
+        .scan<'f', float>();
+
+    program.add_argument("--HardInBalanceTeamRatio")
+        .help("control how inbalanced the search would be, 0.0 is perfectly balanced")
+        .default_value(0.0f)
         .scan<'f', float>();
     program.add_argument("--HardInBalanceTeam")
         .help("number of Hard InBalance Team")
@@ -188,12 +197,14 @@ int main(int argc, char* argv[]) {
     // bool divideIVF = program.get<bool>("divideIVF");
     bool disableOrderOptimize = program.get<bool>("disableOrderOpt");
     bool cut = program.get<bool>("cut");
+    bool minorCut = program.get<bool>("minorCut");
     bool run_faiss = program.get<bool>("run_faiss");
     // bool period = program.get<bool>("period");
     bool inBalance = program.get<bool>("inBalance");
     bool hardInBalance = program.get<bool>("HardInBalance");
     size_t hardInBalanceTeam = program.get<size_t>("HardInBalanceTeam");
     float inBalanceRatio = program.get<float>("HardInBalanceRatio");
+    float inBalanceTeamRatio = program.get<float>("HardInBalanceTeamRatio");
     if((hardInBalance && hardInBalanceTeam == 0) || (hardInBalanceTeam != 0 && !hardInBalance) || inBalanceRatio > 1.0) {
         cerr << "hardInBalance and hardInBalanceTeam" << endl;
         exit(1);
@@ -265,7 +276,7 @@ int main(int argc, char* argv[]) {
     if (rank != 0) {
         if(!run_faiss) {
             MPI_Barrier(MPI_COMM_WORLD);
-            workerMain(rank, cut, searchMode, blockSend);
+            workerMain(rank, cut, searchMode, blockSend, minorCut);
         }
     } else {
         // MyStopWatch watch(true, "queryWatch", CRAN);
@@ -712,6 +723,8 @@ int main(int argc, char* argv[]) {
             stats.team = teamCount;
             stats.blockSend = blockSend;
             stats.inBalanceRatio = param->hardInBalanceRatio;
+            stats.inBalanceRatioTeam = param->hardInBalanceTeamRatio;
+            stats.k = k;
             
             if (recall == 1) {
                 early_stop_flag = true;
@@ -734,10 +747,10 @@ int main(int argc, char* argv[]) {
 
                     Index::Param oriParam;
                     oriParam.mode = Index::SearchMode::ORIGINAL;
-                    Stats oriStat = doSearch(nprobe, opt_level, ratio, early_stop_flag, f_time, distances.get(), labels.get(), &oriParam);
+                    // Stats oriStat = doSearch(nprobe, opt_level, ratio, early_stop_flag, f_time, distances.get(), labels.get(), &oriParam);
 
                     std::cout << YELLOW;
-                    oriStat.print();
+                    // oriStat.print();
                     std::cout << RESET;
 
                     // if(searchMode != Index::SearchMode::ORIGINAL) {
@@ -757,6 +770,7 @@ int main(int argc, char* argv[]) {
                     param.hardInBalance = hardInBalance;
                     param.hardInBalanceTeam = hardInBalanceTeam;
                     param.hardInBalanceRatio = inBalanceRatio;
+                    param.hardInBalanceTeamRatio = inBalanceTeamRatio;
                     auto heapTops = std::make_unique<float[]>(nq); 
                     if(param.fullWarmUp) {
                         cout << YELLOW << "Full Warm Up!" << RESET << endl;
@@ -784,7 +798,7 @@ int main(int argc, char* argv[]) {
                     variance /= nlist;
                     variance = sqrt(variance);
                     stat.variance = variance;
-                    // printVector(ivfCalculatedCount, BLUE, format("方差 {} 平均{}",variance, average));
+                    printVector(ivfCalculatedCount, BLUE, format("方差 {} 平均{}",variance, average));
                     cout << MAG << format("Speed up ratio compared to faiss : {:.2f}", stat.blockVersionSpeedUpWithOriginal) << RESET << endl;
                     // stat.original_time = oriStat.query_time;
                     stat.original_time = stat.faiss_query_time;

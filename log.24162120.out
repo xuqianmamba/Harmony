@@ -1,0 +1,170 @@
+n03375 n03376 n03377 n03378 n03379
+5
+56
+[1;33mMode: Block[0m
+Job ID: 24162120
+Nodes List: n[03375-03379]
+Number of Nodes: 5
+Arguments passed to the program:
+./release/bin/query --benchmarks_path ./benchmarks --dataset=word2vec --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend --cache --verbose --opt_levels OPT_NONE [1;36mmaster main, node count: 4[0m
+[1;33mMode: Block[0m
+[1;33mMode: Block[0m
+[1;33mMode: Block[0m
+[1;33mMode: Block[0m
+[1;34mnumber of nodes : 4[0m
+[1;31mset warmupSearchListSize to k[0m
+sub_nlist: 31 sub_nprobe: 31
+Added optimization levels: 0
+[1;33m[dim:300, nb:1000000, nq:1000, k:100, worker:4][0m
+Loading groundtruth file ./benchmarks/word2vec/result/groundtruth_100.bin
+Groundtruth file loaded
+Loading index from ./benchmarks/word2vec/index/index_nlist_1000_opt_0_subNprobeRatio_1.index
+Index loaded
+[1;33m[0mpresume20000000000
+[1;34m[0 1 2 3 4 5 6 7 ]
+[0m[1;34m[7 0 1 2 3 4 5 6 ]
+[0m[1;34m[6 7 0 1 2 3 4 5 ]
+[0m[1;34m[5 6 7 0 1 2 3 4 ]
+[0mpreSearch 23.532403034
+[1;36m[masterUniWatch:          master cross barrier]:0.0000s  [0m
+[1;34mblock version of search[0m
+[1;33mIndex:[d:300,nlist:1000,nprobe:1000,node:4]
+[1;32m[warmupSearchList 10, warmupSearchListSize 100][0m
+[1;32m[MyStopWatch:      search block before loop]:0.5412s  [0m
+[1;32m[searchBlock:node(4) search 主循环 block(5) skip:0.0%]:0.2377s  [0m
+[1;32m[searchBlock:node(3) search 主循环 block(6) skip:0.0%]:0.2395s  [0m
+[1;32m[searchBlock:node(2) search 主循环 block(7) skip:0.0%]:0.2426s  [0m
+[1;32m[MyStopWatch:worker(3) -> block(6) -> worker(4) 传输时间]:0.0128s  [0m
+[1;32m[MyStopWatch:worker(4) -> block(5) -> worker(1) 传输时间]:0.0207s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(7) -> worker(3) 传输时间]:0.0197s  [0m
+[1;32m[MyStopWatch:      node(2) block 7 MPI_Wait]:0.0556s  [0m
+[1;32m[MyStopWatch:      node(3) block 6 MPI_Wait]:0.0663s  [0m
+[1;32m[MyStopWatch:node 3 waiting , now received block 7 fail 6]:0.0000s  [0m
+[1;32m[searchBlock:node(1) search 主循环 block(0) skip:0.0%]:0.3342s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(0) -> worker(2) 传输时间]:0.0445s  [0m
+[1;32m[MyStopWatch:      node(4) block 5 MPI_Wait]:0.1773s  [0m
+[1;32m[MyStopWatch:node 4 waiting , now received block 6 fail 5]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(1) block 0 MPI_Wait]:0.0825s  [0m
+[1;32m[MyStopWatch:node 2 waiting , now received block 0 fail 728]:0.1429s  [0m
+[1;32m[searchBlock:node(3) search 主循环 block(7) skip:0.0%]:0.2061s  [0m
+[1;32m[MyStopWatch:worker(3) -> block(7) -> worker(4) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(4) search 主循环 block(6) skip:0.0%]:0.2161s  [0m
+[1;32m[MyStopWatch:worker(4) -> block(6) -> worker(1) 传输时间]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(3) block 7 MPI_Wait]:0.1883s  [0m
+[1;32m[searchBlock:node(1) search 主循环 block(1) skip:0.0%]:0.2999s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(1) -> worker(2) 传输时间]:0.0242s  [0m
+[1;32m[searchBlock:node(2) search 主循环 block(0) skip:0.0%]:0.3295s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(0) -> worker(3) 传输时间]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(4) block 6 MPI_Wait]:0.1972s  [0m
+[1;32m[MyStopWatch:node 4 waiting , now received block 7 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(1) block 1 MPI_Wait]:0.0763s  [0m
+[1;32m[MyStopWatch:      node(2) block 0 MPI_Wait]:0.0735s  [0m
+[1;32m[MyStopWatch:node 2 waiting , now received block 1 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:node 3 waiting , now received block 0 fail 810]:0.1511s  [0m
+[1;32m[searchBlock:node(4) search 主循环 block(7) skip:0.0%]:0.2071s  [0m
+[1;32m[MyStopWatch:worker(4) -> block(7) -> worker(1) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(1) search 主循环 block(2) skip:0.0%]:0.2762s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(2) -> worker(2) 传输时间]:0.0236s  [0m
+[1;32m[searchBlock:node(2) search 主循环 block(1) skip:0.0%]:0.3017s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(1) -> worker(3) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(3) search 主循环 block(0) skip:0.0%]:0.3281s  [0m
+[1;32m[MyStopWatch:worker(3) -> block(0) -> worker(4) 传输时间]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(4) block 7 MPI_Wait]:0.1693s  [0m
+[1;32m[MyStopWatch:      node(1) block 2 MPI_Wait]:0.0758s  [0m
+[1;32m[MyStopWatch:node 4 waiting , now received block 0 fail 175]:0.0276s  [0m
+[1;32m[MyStopWatch:      node(3) block 0 MPI_Wait]:0.0608s  [0m
+[1;32m[MyStopWatch:      node(2) block 1 MPI_Wait]:0.1003s  [0m
+[1;32m[MyStopWatch:node 2 waiting , now received block 2 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:node 3 waiting , now received block 1 fail 90]:0.0137s  [0m
+[1;32m[searchBlock:node(1) search 主循环 block(3) skip:0.0%]:0.2624s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(3) -> worker(2) 传输时间]:0.0233s  [0m
+[1;32m[searchBlock:node(2) search 主循环 block(2) skip:0.0%]:0.2803s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(2) -> worker(3) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(3) search 主循环 block(1) skip:0.0%]:0.3005s  [0m
+[1;32m[MyStopWatch:worker(3) -> block(1) -> worker(4) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(4) search 主循环 block(0) skip:0.0%]:0.3311s  [0m
+[1;36m[masterUniWatch:        master receive block 0]:2.1359s  ***[0m
+[1;32m[MyStopWatch:worker(4) -> block(0) -> worker(0) 传输时间]:0.0001s  [0m
+[1;32m[MyStopWatch:      node(1) block 3 MPI_Wait]:0.0928s  [0m
+[1;32m[MyStopWatch:      node(2) block 2 MPI_Wait]:0.0945s  [0m
+[1;32m[MyStopWatch:node 2 waiting , now received block 3 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:node 4 waiting , now received block 1 fail 320]:0.0738s  [0m
+[1;32m[MyStopWatch:      node(3) block 1 MPI_Wait]:0.0908s  [0m
+[1;32m[MyStopWatch:node 3 waiting , now received block 2 fail 0]:0.0000s  [0m
+[1;32m[searchBlock:node(1) search 主循环 block(4) skip:0.0%]:0.2434s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(4) -> worker(2) 传输时间]:0.0230s  [0m
+[1;32m[searchBlock:node(2) search 主循环 block(3) skip:0.0%]:0.2720s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(3) -> worker(3) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(3) search 主循环 block(2) skip:0.0%]:0.2865s  [0m
+[1;32m[MyStopWatch:worker(3) -> block(2) -> worker(4) 传输时间]:0.0000s  [0m
+[1;36m[masterUniWatch:        master receive block 1]:2.5130s  ***[0m
+[1;32m[searchBlock:node(4) search 主循环 block(1) skip:0.0%]:0.3031s  [0m
+[1;32m[MyStopWatch:worker(4) -> block(1) -> worker(0) 传输时间]:0.0001s  [0m
+[1;32m[MyStopWatch:      node(1) block 4 MPI_Wait]:0.1012s  [0m
+[1;32m[MyStopWatch:node 1 waiting , now received block 5 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(2) block 3 MPI_Wait]:0.1059s  [0m
+[1;32m[MyStopWatch:node 2 waiting , now received block 4 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:node 4 waiting , now received block 2 fail 321]:0.0725s  [0m
+[1;32m[MyStopWatch:      node(3) block 2 MPI_Wait]:0.0893s  [0m
+[1;32m[MyStopWatch:node 3 waiting , now received block 3 fail 0]:0.0000s  [0m
+[1;32m[searchBlock:node(1) search 主循环 block(5) skip:0.0%]:0.2269s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(5) -> worker(2) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(2) search 主循环 block(4) skip:0.0%]:0.2437s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(4) -> worker(3) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(3) search 主循环 block(3) skip:0.0%]:0.2748s  [0m
+[1;32m[MyStopWatch:worker(3) -> block(3) -> worker(4) 传输时间]:0.0000s  [0m
+[1;36m[masterUniWatch:        master receive block 2]:2.8678s  ***[0m
+[1;32m[searchBlock:node(4) search 主循环 block(2) skip:0.0%]:0.2821s  [0m
+[1;32m[MyStopWatch:worker(4) -> block(2) -> worker(0) 传输时间]:0.0001s  [0m
+[1;32m[MyStopWatch:      node(1) block 5 MPI_Wait]:0.1272s  [0m
+[1;32m[MyStopWatch:node 1 waiting , now received block 6 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(2) block 4 MPI_Wait]:0.1206s  [0m
+[1;32m[MyStopWatch:node 2 waiting , now received block 5 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(3) block 3 MPI_Wait]:0.0801s  [0m
+[1;32m[MyStopWatch:node 3 waiting , now received block 4 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:node 4 waiting , now received block 3 fail 320]:0.0727s  [0m
+[1;32m[searchBlock:node(1) search 主循环 block(6) skip:0.0%]:0.2412s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(6) -> worker(2) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(2) search 主循环 block(5) skip:0.0%]:0.2331s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(5) -> worker(3) 传输时间]:0.0000s  [0m
+[1;32m[searchBlock:node(3) search 主循环 block(4) skip:0.0%]:0.2474s  [0m
+[1;32m[MyStopWatch:worker(3) -> block(4) -> worker(4) 传输时间]:0.0000s  [0m
+[1;36m[masterUniWatch:        master receive block 3]:3.2070s  ***[0m
+[1;32m[searchBlock:node(4) search 主循环 block(3) skip:0.0%]:0.2663s  [0m
+[1;32m[MyStopWatch:worker(4) -> block(3) -> worker(0) 传输时间]:0.0001s  [0m
+[1;32m[MyStopWatch:      node(1) block 6 MPI_Wait]:0.1132s  [0m
+[1;32m[MyStopWatch:node 1 waiting , now received block 7 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:      node(2) block 5 MPI_Wait]:0.0941s  [0m
+[1;32m[MyStopWatch:node 2 waiting , now received block 6 fail 0]:0.0000s  [0m
+[1;32m[MyStopWatch:node 4 waiting , now received block 4 fail 318]:0.0732s  [0m
+[1;32m[MyStopWatch:      node(3) block 4 MPI_Wait]:0.0922s  [0m
+[1;32m[MyStopWatch:node 3 waiting , now received block 5 fail 0]:0.0000s  [0m
+[1;36m[masterUniWatch:        master receive block 7]:3.4830s  ***[0m
+[1;32m[searchBlock:node(1) search 主循环 block(7) skip:0.0%]:0.2403s  [0m
+[1;32m[MyStopWatch:worker(1) -> block(7) -> worker(0) 传输时间]:0.0001s  [0m
+[1;32m[total search watch:Search Finished node(1), total skip:0.0%, waitTime 0.8075348789999999 27.54% searchTime 2.124141754 72.43% otherTime 0.0010235459999998753 0.03%]:2.9327s  ***[0m
+[1;36m[masterUniWatch:        master receive block 6]:3.4995s  ***[0m
+[1;32m[searchBlock:node(2) search 主循环 block(6) skip:0.0%]:0.2371s  [0m
+[1;32m[MyStopWatch:worker(2) -> block(6) -> worker(0) 传输时间]:0.0001s  [0m
+[1;32m[total search watch:Search Finished node(2), total skip:0.0%, waitTime 0.807339039 27.38% searchTime 2.139792505 72.56% otherTime 0.002039187999999914 0.07%]:2.9492s  ***[0m
+[1;32m[searchBlock:node(3) search 主循环 block(5) skip:0.0%]:0.2331s  [0m
+[1;36m[masterUniWatch:        master receive block 5]:3.5136s  ***[0m
+[1;32m[MyStopWatch:worker(3) -> block(5) -> worker(0) 传输时间]:0.0002s  [0m
+[1;32m[total search watch:Search Finished node(3), total skip:0.0%, waitTime 0.8457441629999999 28.54% searchTime 2.115699592 71.40% otherTime 0.0018935680000002897 0.06%]:2.9634s  ***[0m
+[1;36m[masterUniWatch:        master receive block 4]:3.5283s  ***[0m
+[1;32m[MyStopWatch:Load Balance Time(first to Last Block)]:1.3925s  ***[0m
+[1;32m[MyStopWatch:                   searchblock]:2.9781s  ***[0m
+[1;36mfinish search[0m
+[1;34m方差 0 平均1000[1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 10[1;32m[searchBlock:node(4) search 主循环 block(4) skip:0.0%]:0.2480s  [0m
+00 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 ]
+[0m[1;35mSpeed up ratio compared to faiss : 0.00[0m
+nprobe:1000 opt_level: 0 simi_ratio: 1
+time_speedup: 282.09% pruning_speedup: 0.00% faiss_query_time: 9.951783 query_time: 3.527903
+recall: 1 r2: 0
+[1;32m[MyStopWatch:worker(4) -> block(4) -> worker(0) 传输时间]:0.0001s  [0m
+[1;32m[total search watch:Search Finished node(4), total skip:0.0%, waitTime 0.8848385 29.71% searchTime 2.091454261 70.23% otherTime 0.0017464660000001686 0.06%]:2.9781s  ***[0m
+[1;36mreturn worker:0[0m
+[1;36mreturn worker:4[0m
+[1;36mreturn worker:3[0m
+[1;36mreturn worker:2[0m
+[1;36mreturn worker:1[0m

@@ -443,7 +443,7 @@ void Worker::searchBlock(size_t blockId, bool cut) {
 }
 
 void BaseWorker::init(int rank) {
-        MyStopWatch watch(false);
+        MyStopWatch watch(true);
 
         this->rank = rank;
         // this->index = index;
@@ -459,12 +459,25 @@ void BaseWorker::init(int rank) {
 
         // 2.IVF的大小，IVF的向量表示
         listSizes = std::make_unique<size_t[]>(info.ivfCount);
+
+
+        listCodes = vector<std::unique_ptr<float[]>>(info.ivfCount); //每个聚类对应的codes
+        listIds = vector<std::unique_ptr<size_t[]>>(info.ivfCount); //每个聚类对应的ids
+
+        watch.print("malloc");
+
         MPI_Recv(listSizes.get(), info.ivfCount * sizeof(size_t), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+        watch.print("listSize");
 
 #pragma omp parallel for
         for (size_t i = 0; i < info.ivfCount; i++) {
             index->lists[i].reset(listSizes[i], info.d, 0);
+        }
+
+        for (size_t i = 0; i < info.ivfCount; i++) {
+            listCodes[i] = std::make_unique<float[]>(listSizes[i] * info.d);
+            listIds[i] = std::make_unique<size_t[]>(listSizes[i]);
         }
         watch.print("lists");
 
@@ -473,12 +486,8 @@ void BaseWorker::init(int rank) {
             totalNb += listSizes[i];
         }
 
-        listCodes = vector<std::unique_ptr<float[]>>(info.ivfCount); //每个聚类对应的codes
-        listIds = vector<std::unique_ptr<size_t[]>>(info.ivfCount); //每个聚类对应的ids
 
         for (size_t i = 0; i < info.ivfCount; i++) {
-            listCodes[i] = std::make_unique<float[]>(listSizes[i] * info.d);
-            listIds[i] = std::make_unique<size_t[]>(listSizes[i]);
             MPI_Recv(listCodes[i].get(), listSizes[i] * info.d , MPI_FLOAT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             copy_n(listCodes[i].get(), listSizes[i] * info.d, index->lists[i].candidate_codes.get());
             MPI_Recv(listIds[i].get(), listSizes[i] * sizeof(size_t), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -529,6 +538,10 @@ void BaseWorker::init(int rank) {
         MPI_Bcast(listidqueries.get(), nq * info.nprobe, MPI_INT64_T, 0, MPI_COMM_WORLD);
         uniWatch.print(format("node {} listidqueries", rank), false);
 
+        heapTops = std::make_unique<float[]>(presumeNq);
+        MPI_Bcast(heapTops.get(), nq, MPI_FLOAT, 0, MPI_COMM_WORLD);
+        uniWatch.print(format("node {} heapTops", rank), false);
+
         // queryCompareSize,queryCompareSizePreSum
         // queryCompareSize = std::make_unique<size_t[]>(nq);
         // MPI_Bcast(queryCompareSize.get(), nq, MPI_INT64_T, 0, MPI_COMM_WORLD);
@@ -542,7 +555,8 @@ void BaseWorker::init(int rank) {
 
     }
 
-void BaseWorker::search() {
+void BaseWorker::search(bool cut) {
+    this->cut = cut;
     MyStopWatch watch(true, "search watch");
     MyStopWatch totalWatch(true, "total watch");
     // uniWatch.print(format("node {} index search start", rank), false);
@@ -600,7 +614,7 @@ void BaseWorker::search() {
 
                 // cout << format("thread {} {}", omp_get_thread_num(), start) << endl;
                 // MyStopWatch w;
-                single_thread_search_simple(end - start, querys.get() + start * info.d, k, distances.get() + start * k, labels.get() + start * k, listidqueries.get() + start * info.nprobe);
+                single_thread_search_simple(end - start, querys.get() + start * info.d, k, distances.get() + start * k, labels.get() + start * k, listidqueries.get() + start * info.nprobe, heapTops.get() + start);
                 // single_thread_search_fast(end - start, querys.get() + start * info.d, k, distances.get() + start * k, labels.get() + start * k, listidqueries.get() + start * info.nprobe);
                 // w.print(format("single thread {}", i));
             }
@@ -779,7 +793,7 @@ void BaseWorker::single_thread_search_fast(size_t n, const float* queries, size_
         listids += info.nprobe;
     }
 }
-void BaseWorker::single_thread_search_simple(size_t n, const float* queries, size_t k, float* distances, idx_t* labels, idx_t* listidqueries) {
+void BaseWorker::single_thread_search_simple(size_t n, const float* queries, size_t k, float* distances, idx_t* labels, idx_t* listidqueries, float* heapTops) {
     //比fast要慢，是不是因为scaner?不是
 
     // cout << index->metric;
@@ -794,6 +808,7 @@ void BaseWorker::single_thread_search_simple(size_t n, const float* queries, siz
     float* simi = distances; //结果，查询向量最近的k个向量的距离
     idx_t* idxi = labels; //结果，查询向量最近的k个向量的id
     idx_t* listids = listidqueries;             // 单个查询对应的IVF聚类中心id
+    size_t cutCount = 0, totalCount = 0;
     // MyStopWatch w;
     for (size_t i = 0; i < n; i++) {
         //每一个i对应一个查询
@@ -812,14 +827,40 @@ void BaseWorker::single_thread_search_simple(size_t n, const float* queries, siz
             // float* codes = listCodes[index].get();
             // size_t* ids = listIds[index].get();
             size_t listSize = list.get_list_size();
+            totalCount += listSize;
             float* codes = list.candidate_codes.get();
             size_t* ids = list.candidate_id.get();
 
             // MyStopWatch wa;
             // scaner->lite_scan_codes(listSize, codes, ids, simi, idxi);
 
-
-             for (size_t v = 0; v < list.get_list_size(); v++) {
+            if(cut) {
+                for (size_t v = 0; v < list.get_list_size(); v++) {
+                    const float* candicate = list.get_candidate_codes() + v * index->d;
+                    float dis = 0;
+                    // dis = calculatedEuclideanDistance(queries + i * index->d, candicate, index->d);
+                    int numCheck = 4;
+                    size_t checkDim = index->d / numCheck; 
+                    const float* query = queries + i * index->d;
+                    for(int check = 0; check < numCheck; check++) {
+                        if(check == numCheck - 1) {
+                            dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, index->d - check * checkDim);
+                        } else {
+                            dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, checkDim);
+                            if(dis > heapTops[i]) {
+                                dis = INFINITY;
+                                cutCount += numCheck - check - 1;
+                                break;
+                            }
+                        }
+                    }
+                    if (dis < simi[0]) {
+                        //比堆顶
+                        heap_replace_top<METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
+                    }
+                }
+            } else {
+                for (size_t v = 0; v < list.get_list_size(); v++) {
                     const float* candicate = list.get_candidate_codes() + v * index->d;
                     float dis = 0;
                     dis = calculatedEuclideanDistance(queries + i * index->d, candicate, index->d);
@@ -828,6 +869,17 @@ void BaseWorker::single_thread_search_simple(size_t n, const float* queries, siz
                         heap_replace_top<METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
                     }
                 }
+            }
+
+            // for (size_t v = 0; v < list.get_list_size(); v++) {
+            //     const float* candicate = list.get_candidate_codes() + v * index->d;
+            //     float dis = 0;
+            //     dis = calculatedEuclideanDistance(queries + i * index->d, candicate, index->d);
+            //     if (dis < simi[0]) {
+            //         //比堆顶
+            //         heap_replace_top<METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
+            //     }
+            // }
             // if(i == 3) {
                 // cout << RED << listSize << RESET << endl;
                 // wa.print(format("q {} ivf {}", i, j), false);
@@ -839,6 +891,7 @@ void BaseWorker::single_thread_search_simple(size_t n, const float* queries, siz
         
         // w.print(format("q {}", i));
     }
+    // cout << RED << format("{}%", double(cutCount) * 25 / totalCount)<< RESET << endl;
 }
 void GroupWorker::init(int rank, bool blockSend) {
     MyStopWatch watch(false);
@@ -908,7 +961,8 @@ void GroupWorker::init(int rank, bool blockSend) {
         init_result(METRIC_L2, presumeNq * presumeK, distanceHeap[i].get(), idHeap[i].get());
     }
     
-    blockDistancesSize = 2 * presumeNq / info.blockCount / info.groupCount * info.nb / info.teamSize * info.nprobe / info.nlist;
+    blockDistancesSize = 2 * presumeNq / info.blockCount / info.groupCount * info.nb * info.nprobe / info.nlist;
+    // blockDistancesSize = 2 * presumeNq / info.blockCount / info.groupCount * info.nb / info.teamSize * info.nprobe / info.nlist;
     distancesForBlocks = vector<vector<std::unique_ptr<float[]>>>(info.groupCount);
     for (size_t i = 0; i < distancesForBlocks.size(); i++) {
         distancesForBlocks[i] = vector<std::unique_ptr<float[]>>(info.blockCount);
@@ -937,7 +991,7 @@ void GroupWorker::receiveQuery() {
 
     MPI_Barrier(MPI_COMM_WORLD); //对应preSearch最后的barrier
 
-    uniWatch = MyStopWatch(true, "uniWatch", MAG);
+    uniWatch = MyStopWatch(false, "uniWatch", MAG);
     uniWatch.print(format("node {} cross barrier", rank), false);
     // nq, querys
     MPI_Bcast(&nq, sizeof(nq), MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -977,9 +1031,10 @@ void GroupWorker::receiveQuery() {
     uniWatch.print(format("node {} finish Receving", rank), false);
 
 }
-void GroupWorker::search(bool cut) {
+void GroupWorker::search(bool cut, bool minorCut) {
 
     this->cut = cut;
+    this->minorCut = minorCut;
 
     MyStopWatch totalWatch(true, "Total Watch");
 
@@ -1209,7 +1264,8 @@ void GroupWorker::searchBlock(size_t blockId, size_t groupId) {
 
 
     if (totalQueryCompareSize > blockDistancesSize) {
-        cerr << "Error blockDistancesSize too small" << endl;
+        
+        cerr << format("Error blockDistancesSize too small {} < {}", blockDistancesSize , totalQueryCompareSize) << endl;
         exit(1);
     }
 
@@ -1268,22 +1324,75 @@ void GroupWorker::searchBlock(size_t blockId, size_t groupId) {
                         if(distanceBuffer[queryOffset + curDistancePosition] == INFINITY) {
                             skip++;
                         } else {
-                            float dis = calculatedEuclideanDistance(querys.get() + q * info.block_dim,
-                                                                    codes,
-                                                                    info.block_dim);
 
-                            distanceBuffer[queryOffset + curDistancePosition] += dis;
+                            if(minorCut) {
 
-                            if (distanceBuffer[queryOffset + curDistancePosition] > heapTops[q]) {
-                                distanceBuffer[queryOffset + curDistancePosition] = INFINITY;
-                            } else {
-                                if(shouldSendHeap(blockId)) {
-                                    if (distanceBuffer[queryOffset + curDistancePosition] < simi[0]) {
-                                        //比堆顶
-                                        heap_replace_top<METRIC_L2>(k, simi, idxi, distanceBuffer[queryOffset + curDistancePosition], index->lists[ivfId].get_candidate_id()[v]);
+                                float dis = distanceBuffer[queryOffset + curDistancePosition];
+                                auto candicate = codes;
+                                auto query = querys.get() + q * info.block_dim;
+                                int numCheck = 4;
+                                size_t checkDim = info.block_dim / numCheck; 
+
+                                for(int check = 0; check < numCheck; check++) {
+                                    if(check == numCheck - 1) {
+                                        dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, info.block_dim- check * checkDim);
+                                    } else {
+                                        dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, checkDim);
+                                        if(dis > heapTops[q]) {
+                                            dis = INFINITY;
+                                            // cutCount += numCheck - check - 1;
+                                            break;
+                                        }
                                     }
-                                } 
+                                }
+
+                                distanceBuffer[queryOffset + curDistancePosition] = dis;
+
+                                if (distanceBuffer[queryOffset + curDistancePosition] > heapTops[q]) {
+                                    distanceBuffer[queryOffset + curDistancePosition] = INFINITY;
+                                } else {
+                                    if(shouldSendHeap(blockId)) {
+                                        if (distanceBuffer[queryOffset + curDistancePosition] < simi[0]) {
+                                            //比堆顶
+                                            heap_replace_top<METRIC_L2>(k, simi, idxi, distanceBuffer[queryOffset + curDistancePosition], index->lists[ivfId].get_candidate_id()[v]);
+                                        }
+                                    } 
+                                }
+                            } else {
+                                float dis = calculatedEuclideanDistance(querys.get() + q * info.block_dim,
+                                                                        codes,
+                                                                        info.block_dim);
+
+                                distanceBuffer[queryOffset + curDistancePosition] += dis;
+
+                                if (distanceBuffer[queryOffset + curDistancePosition] > heapTops[q]) {
+                                    distanceBuffer[queryOffset + curDistancePosition] = INFINITY;
+                                } else {
+                                    if(shouldSendHeap(blockId)) {
+                                        if (distanceBuffer[queryOffset + curDistancePosition] < simi[0]) {
+                                            //比堆顶
+                                            heap_replace_top<METRIC_L2>(k, simi, idxi, distanceBuffer[queryOffset + curDistancePosition], index->lists[ivfId].get_candidate_id()[v]);
+                                        }
+                                    } 
+                                }
                             }
+                            
+                            // float dis = calculatedEuclideanDistance(querys.get() + q * info.block_dim,
+                            //                                         codes,
+                            //                                         info.block_dim);
+
+                            // distanceBuffer[queryOffset + curDistancePosition] += dis;
+
+                            // if (distanceBuffer[queryOffset + curDistancePosition] > heapTops[q]) {
+                            //     distanceBuffer[queryOffset + curDistancePosition] = INFINITY;
+                            // } else {
+                            //     if(shouldSendHeap(blockId)) {
+                            //         if (distanceBuffer[queryOffset + curDistancePosition] < simi[0]) {
+                            //             //比堆顶
+                            //             heap_replace_top<METRIC_L2>(k, simi, idxi, distanceBuffer[queryOffset + curDistancePosition], index->lists[ivfId].get_candidate_id()[v]);
+                            //         }
+                            //     } 
+                            // }
                         }
                     } else {
                         float dis = calculatedEuclideanDistance(query,

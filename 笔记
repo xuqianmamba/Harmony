@@ -1,0 +1,36 @@
+1. implementation
+代码大概2000-3000行
+
+用到的东西：
+用OpenMPI实现分布式计算，涉及到向量数据的传输
+用OpenMP实现多线程计算，加速搜索过程中距离计算
+没用到什么C++的特性
+
+流水线实现：MPI_Send MPI MPI_Isend MPI_Wait MPI_Test MPI_Irecv MPI_Recv
+剪枝：用自己实现的最大堆heap
+
+2.Evaluation
+
+测速度和recall的关系，通过改变nprobe; recall要指数区别，分维度的尽量慢，分块的尽量快
+测速度和负载不均衡的关系，通过测方差
+多用几个机器
+
+测breakdown
+
+测dim，group的剪枝比
+
+测不同维度的数据集，用速度最高的
+
+测离线的build时间是多少，和faiss比
+
+测索引空间，在测之前
+
+Fashion
+Nuswide
+Msong
+Sift1M
+Glove25
+Hand Outlines
+Star Light Curves
+Deep1B
+Space1B

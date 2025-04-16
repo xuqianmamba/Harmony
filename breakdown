@@ -1,0 +1,48 @@
+sift1m 
+base
+[total watch:Search Finished node(2), waitTime 0.003421668 0.06% searchTime 6.199619205 99.94%]:6.2031s  ***
+[total watch:Search Finished node(3), waitTime 0.003333933 0.05% searchTime 6.266905558 99.95%]:6.2703s  ***
+[total watch:Search Finished node(1), waitTime 0.003111103 0.05% searchTime 6.302675928 99.95%]:6.3059s  ***
+[total watch:Search Finished node(4), waitTime 0.003003392 0.05% searchTime 6.368540391 99.95%]:6.3716s  ***
+
+group
+[Total Watch:node(2) 结束所有group搜索, waitTime 2.555s 36.43% searchTime 4.409s 62.86% otherTime 0.050s 0.71%]:7.0144s  ***
+[Total Watch:node(1) 结束所有group搜索, waitTime 2.840s 39.23% searchTime 4.350s 60.09% otherTime 0.049s 0.68%]:7.2383s  ***
+[Total Watch:node(3) 结束所有group搜索, waitTime 3.815s 45.27% searchTime 4.563s 54.15% otherTime 0.049s 0.58%]:8.4274s  ***
+[Total Watch:node(4) 结束所有group搜索, waitTime 1.423s 17.60% searchTime 6.612s 81.78% otherTime 0.050s 0.62%]:8.0843s  ***
+
+dim
+[total search watch:Search Finished node(1), total skip:0.0%, waitTime 6.398163665000001 46.18% searchTime 7.454812345000001 53.81% otherTime 0.0010497779999978363 0.01%]:13.8541s  ***
+[total search watch:Search Finished node(2), total skip:0.0%, waitTime 7.281723199000002 50.00% searchTime 7.280456332 49.99% otherTime 0.0020535049999974575 0.01%]:14.5643s  ***
+[total search watch:Search Finished node(3), total skip:0.0%, waitTime 6.5553548269999995 44.74% searchTime 8.094141877 55.25% otherTime 0.001839085999998602 0.01%]:14.6514s  ***
+[total search watch:Search Finished node(4), total skip:0.0%, waitTime 7.4087898170000015 50.96% searchTime 7.12814426 49.03% otherTime 0.0019489769999978535 0.01%]:14.5389s  ***
+
+[Total Watch:node(1) 结束所有group搜索, waitTime 0.646s 11.80% searchTime 4.663s 85.13% otherTime 0.169s 3.08%]:5.4774s  ***
+[Total Watch:node(3) 结束所有group搜索, waitTime 0.695s 12.49% searchTime 4.799s 86.27% otherTime 0.069s 1.24%]:5.5630s  ***
+[Total Watch:node(2) 结束所有group搜索, waitTime 0.599s 10.74% searchTime 4.929s 88.30% otherTime 0.054s 0.96%]:5.5826s  ***
+[Total Watch:node(4) 结束所有group搜索, waitTime 0.684s 12.12% searchTime 4.902s 86.93% otherTime 0.053s 0.95%]:5.6390s  ***
+
+[Total Watch:node(4) 结束所有group搜索, waitTime 1.592s 25.19% searchTime 4.678s 74.03% otherTime 0.049s 0.77%]:6.3180s  ***
+[Total Watch:node(3) 结束所有group搜索, waitTime 1.953s 28.55% searchTime 4.840s 70.75% otherTime 0.048s 0.69%]:6.8411s  ***
+[Total Watch:node(2) 结束所有group搜索, waitTime 1.367s 20.69% searchTime 5.190s 78.56% otherTime 0.049s 0.74%]:6.6062s  ***
+[Total Watch:node(1) 结束所有group搜索, waitTime 2.201s 31.31% searchTime 4.782s 68.01% otherTime 0.048s 0.68%]:7.0308s  ***
+
+msong
+base
+[total watch:Search Finished node(1), waitTime 0.0013801 0.04% searchTime 3.178275288 99.96%]:3.1797s  ***
+[total watch:Search Finished node(2), waitTime 0.001422726 0.05% searchTime 3.130249058 99.95%]:3.1317s  ***
+[total watch:Search Finished node(3), waitTime 0.001640936 0.05% searchTime 2.98278487 99.94%]:2.9845s  ***
+[total watch:Search Finished node(4), waitTime 0.000949894 0.03% searchTime 2.992215506 99.97%]:2.9932s  ***
+
+group
+[Total Watch:node(1) 结束所有group搜索, waitTime 0.311s 10.94% searchTime 2.502s 87.96% otherTime 0.031s 1.10%]:2.8440s  ***
+[Total Watch:node(3) 结束所有group搜索, waitTime 0.282s 10.06% searchTime 2.491s 88.83% otherTime 0.031s 1.11%]:2.8044s  ***
+[Total Watch:node(2) 结束所有group搜索, waitTime 0.461s 16.77% searchTime 2.257s 82.08% otherTime 0.032s 1.15%]:2.7497s  ***
+[Total Watch:node(4) 结束所有group搜索, waitTime 0.472s 18.09% searchTime 2.106s 80.70% otherTime 0.032s 1.22%]:2.6094s  ***
+
+base 
+[total search watch:Search Finished node(1), total skip:0.0%, waitTime 1.0380105020000001 20.49% searchTime 4.026102425 79.49% otherTime 0.0009106589999996473 0.02%]:5.0651s  ***
+[total search watch:Search Finished node(2), total skip:0.0%, waitTime 1.541793475 27.71% searchTime 4.019578011999999 72.25% otherTime 0.002170997000001229 0.04%]:5.5636s  ***
+[total search watch:Search Finished node(3), total skip:0.0%, waitTime 1.629533403 28.84% searchTime 4.018615126 71.13% otherTime 0.0017781550000002255 0.03%]:5.6500s  ***
+[total search watch:Search Finished node(4), total skip:0.0%, waitTime 1.6331765889999998 28.94% searchTime 4.008104757 71.03% otherTime 0.001872394000000277 0.03%]:5.6432s  ***
+

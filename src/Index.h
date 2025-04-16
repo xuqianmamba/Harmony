@@ -64,6 +64,7 @@ class Index {
         bool hardInBalance = false;
         size_t hardInBalanceTeam;
         float hardInBalanceRatio;
+        float hardInBalanceTeamRatio;
     };
     void train(size_t n, const float* codes, bool faiss = false, bool lite = false);
 

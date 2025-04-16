@@ -1,0 +1,61 @@
+sbatch --nodes=5 run.slurm --dataset=sift1m --mode base n01985 1433680 query
+sbatch --nodes=5 run.slurm --dataset=sift1m --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n00549 78706988 query
+sbatch --nodes=5 run.slurm --dataset=sift1m --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00557 78793376 query
+
+
+
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --mode base n01986 834284 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --mode base n02022 1294056 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --mode base n00447 673504 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n00561 5143680 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n02019 4517184 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n03321 4553444 query
+sbatch --nodes=5 run.slurm --dataset=msong --mode base n00567 1207860 query
+sbatch --nodes=5 run.slurm --dataset=msong --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n00444 4666912 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --mode base n00551 1727240 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00556 9940136 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00454 9556924 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00439 8449056 query
+sbatch --nodes=5 run.slurm --dataset=StarLightCurves --input_format=txt --mode base n00432 4127984 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n03318 9613844 query
+sbatch --nodes=5 run.slurm --dataset=StarLightCurves --input_format=txt --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n03331 5138084 query
+sbatch --nodes=5 run.slurm --dataset=msong --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n02031 8563832 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00572 19486636 query
+sbatch --nodes=5 run.slurm --dataset=StarLightCurves --input_format=txt --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n03327 7653164 query
+
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --warmup_list=10 --disableOrderOpt --block=10 --mode block --blockSend n00556 9291532 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --warmup_list=10 --cut --block=5 --mode group --group=2 --team=2 n01987 8879060 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --mode base n00549 11603336 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --mode base n03395 1349140 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --mode base n02022 205132 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --mode base n00437 1403432 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --mode base n01987 1035832 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --mode base n03365 1520424 query
+sbatch --nodes=5 run.slurm --dataset=msong --mode base n00575 2034492 query
+sbatch --nodes=5 run.slurm --dataset=msong --mode base n00432 2042444 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --mode base n03383 1839092 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n00571 39760820 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n02018 39772760 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n03362 39816408 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n03324 34084756 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n03387 47325620 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n00454 47323156 query
+sbatch --nodes=5 run.slurm --dataset=msong --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n03359 34027512 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --mode base n00566 11777864 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --warmup_list=10 --cut --block=5 --mode group --group=2 --team=2 n03371 26983340 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --mode base n03391 11774632 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00549 78923408 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00554 78971368 query
+sbatch --nodes=5 run.slurm --dataset=deep1M --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n03326 78923040 query
+sbatch --nodes=5 run.slurm --dataset=word2vec --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n03378 79765656 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --warmup_list=10 --disableOrderOpt --block=10 --mode block --blockSend n03346 49127416 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --warmup_list=10 --cut --block=5 --mode group --group=2 --team=2 n03352 26988460 query
+sbatch --nodes=5 run.slurm --dataset=msong --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00445 78638600 query
+sbatch --nodes=5 run.slurm --dataset=HandOutlines --input_format=txt --warmup_list=10 --disableOrderOpt --block=10 --mode block --blockSend n03341 49129108 query
+sbatch --nodes=5 run.slurm --dataset=msong --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n03339 78642056 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n00564 94025716 query
+sbatch --nodes=5 run.slurm --dataset=glove1.2m --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n01990 94493972 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n02030 86957688 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --warmup_list=10 --cut --block=4 --mode group --group=2 --team=2 n00450 86954304 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n03333 173969564 query
+sbatch --nodes=5 run.slurm --dataset=glove2.2m --warmup_list=10 --disableOrderOpt --block=8 --mode block --blockSend n03318 173001036 query

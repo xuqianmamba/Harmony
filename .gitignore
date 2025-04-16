@@ -20,4 +20,11 @@ analysis.txt
 *.log
 *workspace
 logs*/
-benchmarks/*
+log
+memory_total
+third_party
+src/CMakeFiles
+src/tests
+eigen3
+benchmarks/glove1.2m
+tmp

@@ -5,7 +5,6 @@ set(SRC_FILES
     Index.cpp
     IVF.cpp
     node.cpp
-    divide.cpp
     # utils.cpp
 )
 
@@ -23,6 +22,15 @@ target_link_libraries(main Tribase faiss)
 add_executable(query query.cpp)
 target_link_libraries(query Tribase faiss)
 
-# add_executable(divide divide.cpp)
-# target_link_libraries(divide Tribase faiss)
 # add_subdirectory(tests)
+
+# OpenMP
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(Tribase PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
+# MPI
+find_package(MPI REQUIRED)
+
+target_link_libraries(Tribase PUBLIC MPI::MPI_CXX)

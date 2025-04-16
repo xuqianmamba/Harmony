@@ -1,0 +1,46 @@
+986M    benchmarks/deep1M/index/faiss_index_nlist_1000.index
+245M    benchmarks/deep1M/index/index_nlist_1000_Baseline.index
+253M    benchmarks/deep1M/index/index_nlist_1000_Dim     .index
+250M    benchmarks/deep1M/index/index_nlist_1000_Group   .index
+990M    benchmarks/deep1M/index/index_nlist_1000_opt_0_subNprobeRatio_1.index
+
+921M    benchmarks/glove1.2m/index/faiss_index_nlist_1092.index
+247M    benchmarks/glove1.2m/index/index_nlist_1092_Baseline.index
+238M    benchmarks/glove1.2m/index/index_nlist_1092_Dim     .index
+233M    benchmarks/glove1.2m/index/index_nlist_1092_Group   .index
+926M    benchmarks/glove1.2m/index/index_nlist_1092_opt_0_subNprobeRatio_1.index
+
+2.5G    benchmarks/glove2.2m/index/faiss_index_nlist_1481.index
+660M    benchmarks/glove2.2m/index/index_nlist_1481_Baseline.index
+647M    benchmarks/glove2.2m/index/index_nlist_1481_Dim     .index
+626M    benchmarks/glove2.2m/index/index_nlist_1481_Group   .index
+2.5G    benchmarks/glove2.2m/index/index_nlist_1481_opt_0_subNprobeRatio_1.index
+
+1.6G    benchmarks/msong/index/faiss_index_nlist_997.index
+411M    benchmarks/msong/index/index_nlist_997_Baseline.index
+408M    benchmarks/msong/index/index_nlist_997_Dim     .index
+413M    benchmarks/msong/index/index_nlist_997_Group   .index
+1.6G    benchmarks/msong/index/index_nlist_997_opt_0_subNprobeRatio_1.index
+
+497M    benchmarks/sift1m/index/faiss_index_nlist_1000.index
+126M    benchmarks/sift1m/index/index_nlist_1000_Baseline.index
+131M    benchmarks/sift1m/index/index_nlist_1000_Dim     .index
+126M    benchmarks/sift1m/index/index_nlist_1000_Group   .index
+501M    benchmarks/sift1m/index/index_nlist_1000_opt_7_subNprobeRatio_1.index
+
+3.2G    benchmarks/StarLightCurves/index/faiss_index_nlist_907.index
+788M    benchmarks/StarLightCurves/index/index_nlist_907_Baseline.index
+815M    benchmarks/StarLightCurves/index/index_nlist_907_Dim     .index
+768M    benchmarks/StarLightCurves/index/index_nlist_907_Group   .index
+3.2G    benchmarks/StarLightCurves/index/index_nlist_907_opt_0_subNprobeRatio_1.index
+
+1.2G    benchmarks/word2vec/index/faiss_index_nlist_1000.index
+266M    benchmarks/word2vec/index/index_nlist_1000_Baseline.index
+295M    benchmarks/word2vec/index/index_nlist_1000_Dim     .index
+279M    benchmarks/word2vec/index/index_nlist_1000_Group   .index
+1.2G    benchmarks/word2vec/index/index_nlist_1000_opt_0_subNprobeRatio_1.index
+
+6.1G    benchmarks/HandOutlines/index/faiss_index_nlist_774.index
+1.5G    benchmarks/HandOutlines/index/index_nlist_774_Baseline.index
+1.5G    benchmarks/HandOutlines/index/index_nlist_774_Group   .index
+6.1G    benchmarks/HandOutlines/index/index_nlist_774_opt_0_subNprobeRatio_1.index

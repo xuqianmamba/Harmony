@@ -1,5 +1,5 @@
 #include <argparse/argparse.hpp>
-#include <format>
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -8,6 +8,7 @@
 #include <faiss/IndexFlat.h>
 #include <faiss/IndexIVFFlat.h>
 #include "tribase.h"
+#include <format>
 #include "utils.h"
 using namespace tribase;
 int main(int argc, char* argv[]) {

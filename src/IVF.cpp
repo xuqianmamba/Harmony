@@ -50,9 +50,6 @@ void IVF::reset(size_t listSize, size_t d, size_t subK, OptLevel optLevel) {
     this->d = d;
     this->sub_k = subK;
     this->opt_level = optLevel;
-    if(listSize == 0) {
-        return;
-    }
     candidate_id = std::make_unique<size_t[]>(listSize);
     candidate_codes = std::make_unique<float[]>(listSize * d);
     candidate_norms = std::make_unique<float[]>(listSize);  // L2

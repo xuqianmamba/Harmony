@@ -24,7 +24,7 @@ class IVFScanBase {
 
     void set_query(const float* query) {
         this->query = query;
-        this->query_norm = calculatedInnerProduct(query, query, d);
+        // this->query_norm = calculatedInnerProduct(query, query, d);
     }
 
     virtual void lite_scan_codes(size_t list_size,
@@ -126,8 +126,10 @@ class IVFScan : public IVFScanBase {
                 }
             } else if constexpr (metric == MetricType::METRIC_L2) {
             if constexpr (!edge_device_enabled) {
+                // std::cout << "not 0" << std::endl;
                 dis = calculatedEuclideanDistance(query, candicate, d);
             } else {
+                // std::cout << "dis0" << std::endl;
                 dis = calculatedEuclideanDistance0(query, candicate, d);
             }
             if (dis < simi[0]) {
