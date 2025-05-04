@@ -277,9 +277,6 @@ int main(int argc, char* argv[]) {
             workerMain(rank, pruning, searchMode, blockSend, minorCut);
         }
     } else {
-        // char* job_id = std::getenv("SLURM_JOB_ID");
-        // char* node_list = std::getenv("SLURM_JOB_NODELIST");
-        // char* num_nodes = std::getenv("SLURM_NNODES");
         // MyStopWatch watch(true, "queryWatch", CRAN);
         // if (job_id && node_list && num_nodes) {
         //     std::cout << "Job ID: " << job_id << std::endl;
@@ -739,8 +736,8 @@ int main(int argc, char* argv[]) {
             stats.worker = workerCount;
             stats.disableOrderOptimize = disableOrderOptimize;
             // stats.divideIVF = divideIVF;
-            stats.cut = pruning;
-            stats.nodeList = node_list;
+            stats.pruning = pruning;
+            // stats.nodeList = node_list;
             stats.nb = nb;
             stats.nq = nq;
             stats.d = d;

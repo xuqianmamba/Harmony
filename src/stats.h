@@ -35,7 +35,7 @@ class Stats {
     size_t nprobe;
     std::string mode;
 
-    bool divideIVF, disableOrderOptimize, cut, blockSend;
+    bool divideIVF, disableOrderOptimize, pruning, blockSend;
     size_t block, worker, group, team;
     double blockVersionSpeedUpWithOriginal;
 
@@ -127,7 +127,7 @@ class Stats {
                           "1-recall", "1-recall_loose", "r2", "variance", "train_time", "add_time", "preSearch_time", "ratio", "teamRatio", "brute_ratio"},
                          append, false);
         summary();
-        writer << dataset << mode << nb << nq << d << nlist << nprobe << k <<  divideIVF << !disableOrderOptimize << !blockSend << cut << block << worker 
+        writer << dataset << mode << nb << nq << d << nlist << nprobe << k <<  divideIVF << !disableOrderOptimize << !blockSend << pruning << block << worker 
                << group << team
                << time_speedup << query_time << original_time
                << 1.0 - recall << 1.0 - recall_loose << r2 << variance << trainTime << addTime << preSearchTime << inBalanceRatio << inBalanceRatioTeam << brute_ratio << std::endl;
