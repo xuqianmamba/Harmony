@@ -893,7 +893,36 @@ inline float relative_error(float x, float y) {
 }
 
 #define FEPS 1e-4
+inline float calculate_recall_loose(const idx_t* I, const float* D, const idx_t* GT, const float* GD, size_t nq, size_t k, MetricType metric, size_t gt_k = 0) {
+    if(D[0] < 0) {
+        std::cout << RED << "negative Distance " << RESET << std::endl;
+        return 0;
+    }
+    if (gt_k == 0) {
+        gt_k = k;
+    }
+    size_t true_correct = 0;
+    size_t correct = 0;
+    if (k > gt_k) {
+        throw std::invalid_argument("k should be less than or equal to gt_k.");
+    }
+#pragma omp parallel for reduction(+ : true_correct, correct)
+    for (size_t i = 0; i < nq; ++i) {
+        float maxDis = GD[i * k + k - 1];
+        std::unordered_set<idx_t> groundtruth(GT + i * gt_k, GT + i * gt_k + k);
+        for (size_t j = 0; j < k; ++j) {
+            if (I[i * k + j] == -1) {
+                break;
+            }
+            if (groundtruth.find(I[i * k + j]) != groundtruth.end() || D[i * k + j] < maxDis || abs(D[i * k + j] - maxDis) <= FEPS) {
+                true_correct++;
+            }
+        }
+    }
+    return static_cast<float>(true_correct) / (nq * k);
+}
 
+#define FEPS 1e-4
 inline float calculate_recall(const idx_t* I, const float* D, const idx_t* GT, const float* GD, size_t nq, size_t k, MetricType metric, size_t gt_k = 0) {
     if(D[0] < 0) {
         std::cout << RED << "negative Distance " << RESET << std::endl;

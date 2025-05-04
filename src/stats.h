@@ -42,9 +42,10 @@ class Stats {
     double faiss_query_time;
     double query_time, original_time;
     double trainTime, addTime, preSearchTime, inBalanceRatio, inBalanceRatioTeam;
+    double brute_ratio;
     OptLevel opt_level;
 
-    double recall;
+    double recall, recall_loose;
     double r2;
     double variance;
     float simi_ratio;
@@ -123,13 +124,13 @@ class Stats {
                          {"dataset", "mode", "nb", "nq", "d", "nlist", "nprobe", "k", "divideIVF", "orderOptimize", "UnblockSend", "cut", "block", "worker",
                           "group", "team", 
                           "time_speedup", "query_time", "original_time",
-                          "1-recall", "r2", "variance", "train_time", "add_time", "preSearch_time", "ratio", "teamRatio"},
+                          "1-recall", "1-recall_loose", "r2", "variance", "train_time", "add_time", "preSearch_time", "ratio", "teamRatio", "brute_ratio"},
                          append, false);
         summary();
         writer << dataset << mode << nb << nq << d << nlist << nprobe << k <<  divideIVF << !disableOrderOptimize << !blockSend << cut << block << worker 
                << group << team
                << time_speedup << query_time << original_time
-               << 1.0 - recall << r2 << variance << trainTime << addTime << preSearchTime << inBalanceRatio << inBalanceRatioTeam << std::endl;
+               << 1.0 - recall << 1.0 - recall_loose << r2 << variance << trainTime << addTime << preSearchTime << inBalanceRatio << inBalanceRatioTeam << brute_ratio << std::endl;
     }
 };
 

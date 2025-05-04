@@ -29,6 +29,7 @@ class Index {
     Index& operator=(Index&& other) noexcept;
     
     enum class SearchMode {
+        BRUTE_FORCE,
         ORIGINAL,
         DIVIDE_IVF,
         DIVIDE_DIM,
@@ -37,6 +38,7 @@ class Index {
 
     static std::string to_string(SearchMode mode) {
         switch (mode) {
+            case SearchMode::BRUTE_FORCE: return "Brute Force";
             case SearchMode::ORIGINAL: return "Original";
             case SearchMode::DIVIDE_IVF: return "Baseline";
             case SearchMode::DIVIDE_DIM: return "Dim     ";

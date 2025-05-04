@@ -80,159 +80,251 @@ public:
     double waitTime = 0, searchTime = 0;
     // size_t presumeNq = 370, presumeK = 100;
     size_t presumeK = 100;
-    // // 每一块的计算结果的临时存储
-    // class DistanceBufferPool {
-    //     vector<std::unique_ptr<float[]>> distancesForBlocks;
-    //     vector<int> blockIds; //distancesForBlocks每一个的blockid是什么
-    //     vector<bool> used; // distancesForBlocks是否正在被使用
-    //     size_t spareBlock = 0;
-    //     bool useDynamicAlloc = false; //如果为真则distancesForBlocks的下标不代表blockid， 否则代表
-    //     size_t size = 0;
 
-    //     struct Action {
-    //         bool use;
-    //         size_t blockId;
-    //         idx_t compareSize;
-    //         size_t sender;
-    //         Action(size_t blockId) : blockId(blockId) {
-    //             use = true;
-    //         }
-    //         Action(size_t blockId, idx_t compareSize, size_t sender) 
-    //         : blockId(blockId), compareSize(compareSize), sender(sender) {
-    //             use = false;
-    //         }
-    //     };
-    //     queue<Action> waitList; //bool代表是不是use
+    // 每一块的计算结果的临时存储
+    class DistanceBufferPool {
+        vector<std::unique_ptr<float[]>> distancesForBlocks; //实际存储缓冲区
+        vector<int> blockIds; //distancesForBlocks每一个的blockid是什么
+        vector<bool> used; // distancesForBlocks是否正在被使用
+        size_t spareBlock = 0; //可用的缓冲区数
+        bool useDynamicAlloc = false; //如果为真则distancesForBlocks的下标不代表blockid， 否则代表
+        // size_t size = 0;
+        int MAXCHUNKSIZE;
 
-    //     void IRecvSplit(float* buffer, size_t blockId, idx_t compareSize, size_t sender, vector<MPI_Request>& reqs) {
-    //         if(compareSize > INT_MAX) {
-    //             cout << YELLOW << format("WARNING: block {} compare size too big , split into {}", blockId, compareSize / INT_MAX + 1) << RESET << endl;
-    //             idx_t sizeToSend = compareSize;
-    //             while(sizeToSend > INT_MAX) {
-    //                 MPI_Request req;
-    //                 //TODO 这样不行，Irecv顺序不一样
-    //                 MPI_Irecv(buffer + compareSize - sizeToSend, INT_MAX, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &req);
-    //                 reqs.push_back(req);
-    //                 sizeToSend -= INT_MAX;
-    //             }
-    //             MPI_Irecv(buffer + compareSize - sizeToSend, sizeToSend, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &reqs[0]);
-    //         } else {
-    //             MPI_Irecv(buffer, compareSize, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &reqs[0]);
-    //         }
-    //     }
-    //     Worker* worker;
-    // public:
+        struct Action {
+            bool use;
+            size_t blockId;
+            idx_t compareSize;
+            size_t sender;
+            Action(size_t blockId) : blockId(blockId) {
+                use = true;
+            }
+            Action(size_t blockId, idx_t compareSize, size_t sender) 
+            : blockId(blockId), compareSize(compareSize), sender(sender) {
+                use = false;
+            }
+        };
+        queue<Action> waitList; //bool代表是不是use
 
-    //     DistanceBufferPool(const InitInfo& info, Worker* worker) : worker(worker) {
-    //         distancesForBlocks = vector<std::unique_ptr<float[]>>(info.blockCount);
-    //         waitList = queue<Action>();
-    //         try {
-    //             for (size_t i = 0; i < info.blockCount; i++) {
-    //                 distancesForBlocks[size] = std::make_unique<float[]>(info.presumeBlockDistancesSize);
-    //                 size++;
-    //                 // cout << format("buffer {}", size) << endl;
-    //             }
-    //             cout << YELLOW << format("use Normal Alloc") << RESET << endl;
-    //         } catch (const std::bad_alloc& e) { 
-    //             useDynamicAlloc = true;
-    //             blockIds = vector<int>(size, -1);
-    //             used = vector<bool>(size, false);
-    //             spareBlock = size;
-    //             cout << YELLOW << format("use Dynamic Alloc") << RESET << endl;
-    //         }
-    //         // for (size_t i = 0; i < info.blockCount / 2; i++) {
-    //         //     distancesForBlocks[size] = std::make_unique<float[]>(info.presumeBlockDistancesSize);
-    //         //     size++;
-    //         //     // cout << format("buffer {}", size) << endl;
-    //         // }
-    //         // useDynamicAlloc = true;
-    //         cout << format("buffer {}", size) << endl;
-    //     }
-    //     float* getBuffer(size_t blockId) {
-    //         if(!useDynamicAlloc) {
-    //             return distancesForBlocks[blockId].get();
-    //         }
-    //         for (int i = 0; i < size; i++) {
-    //             if(used[i] && (blockIds[i] == blockId)) {
-    //                 return distancesForBlocks[i].get();
-    //             }
-    //         }
-    //         cerr << RED << format("getBuffer {} not found", blockId) << RESET << endl;
-    //         return nullptr;
-    //     }
+        int generateChunkTag(size_t blockId, int chunkIndex) {
+            // 使用一个足够大的系数，确保 chunkIndex 在一个 block 内不会冲突
+            // 并且不超出 MPI_TAG_UB（一般最小是 32767）
+            const int chunkMultiplier = 10000;
+            int tag = static_cast<int>(blockId) * chunkMultiplier + chunkIndex;
+            if (chunkMultiplier < chunkIndex) {
+                cerr << "Error: chunkMultiplier < chunkIndex" << chunkMultiplier<< " < " << chunkIndex << endl;
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
 
-    //     bool IRecv(size_t blockId, idx_t compareSize, size_t sender, vector<MPI_Request>& reqs) {
-    //         if(!useDynamicAlloc) {
-    //             IRecvSplit(distancesForBlocks[blockId].get(), blockId, compareSize, sender, reqs);
-    //             return true;
-    //         } else {
-    //             if(spareBlock <= 0) {
-    //                 waitList.push(Action(blockId, compareSize, sender));
-    //                 return false;
-    //             } else {
-    //                 for (int i = 0; i < size; i++) {
-    //                     if(used[i] == false) {
-    //                         used[i] = true;
-    //                         blockIds[i] = blockId;
-    //                         // MPI_Irecv(distancesForBlocks[i].get(), compareSize, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &reqs[0]);
-    //                         IRecvSplit(distancesForBlocks[i].get(), blockId, compareSize, sender, reqs);
-    //                         cout << format("Irecv {}", blockId) << endl;
-    //                         spareBlock--;
-    //                         return true;
-    //                     }
-    //                 }
-    //             }
-    //             return false;
-    //             // cerr << ""
-    //         }
-    //     }
-    //     bool use(size_t blockId) {
-    //         if(!useDynamicAlloc) {
-    //             return true;
-    //         } else {
-    //             if(spareBlock <= 0) {
-    //                 waitList.push(Action(blockId));
-    //                 return false;
-    //             } 
-    //             for (int i = 0; i < size; i++) {
-    //                 if(used[i] == false) {
-    //                     used[i] = true;
-    //                     blockIds[i] = blockId;
-    //                     cout << format("use {}", blockId) << endl;
-    //                     spareBlock--;
-    //                     return true;
-    //                 }
-    //             }
-    //             return false;
-    //         }
-    //     }
-    //     bool releaseBuffer(size_t blockId) {
-    //         if(!useDynamicAlloc) {
-    //             return true;
-    //         } else {
-    //             for (int i = 0; i < size; i++) {
-    //                 if(used[i] && (blockIds[i] == blockId)) {
-    //                     used[i] = false;
-    //                     blockIds[i] = -1;
-    //                     cout << format("release {}", blockId) << endl;
-    //                     spareBlock++;
-    //                     if(!waitList.empty()) {
-    //                         auto action = waitList.front();
-    //                         if(action.use) {
-    //                             use(action.blockId);
-    //                         } else {
-    //                             IRecv(action.blockId, action.compareSize, action.sender, worker->disRequests[action.blockId]);
-    //                         }
-    //                         waitList.pop();
-    //                     }
-    //                     return true;
-    //                 }
-    //             }
-    //             return false;
-    //         }
-    //     }
-    // };
-    // std::unique_ptr<DistanceBufferPool> distanceBufferPool;
+            // 可选：你可以检查 tag 是否超过 MPI_TAG_UB（最大支持的 tag）
+            int tag_ub;
+            int found;
+            MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &tag_ub, &found);
+            if (found && tag > tag_ub) {
+                cerr << "Error: MPI tag exceeds MPI_TAG_UB: " << tag << " > " << tag_ub << endl;
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+
+            return tag;
+        }
+        void IRecvSplit(float* buffer, size_t blockId, idx_t compareSize, size_t sender, vector<MPI_Request>& reqs) {
+            if(reqs.size() != 0) {
+                cerr << "what the fuck" << endl;
+            }
+            if (compareSize > MAXCHUNKSIZE) {
+                cout << YELLOW << format("WARNING: block {} compare size {} too big, split into {}", blockId, compareSize, (compareSize + MAXCHUNKSIZE - 1) / MAXCHUNKSIZE) << RESET << endl;
+
+                idx_t sizeToReceive = compareSize;
+                int chunkIndex = 0;
+                int offset = 0;
+
+                while (sizeToReceive > MAXCHUNKSIZE) {
+                    MPI_Request req;
+                    int tag = generateChunkTag(blockId, chunkIndex);
+
+                    MPI_Irecv(buffer + offset, MAXCHUNKSIZE, MPI_FLOAT, sender, tag, MPI_COMM_WORLD, &req);
+                    // cout << format("IRecvSplit worker {} tag {}", worker->rank, tag) << endl; 
+                    reqs.push_back(req);
+
+                    sizeToReceive -= MAXCHUNKSIZE;
+                    offset += MAXCHUNKSIZE;
+                    chunkIndex++;
+                }
+
+                // 最后一块
+                MPI_Request req;
+                int tag = generateChunkTag(blockId, chunkIndex);
+                MPI_Irecv(buffer + offset, sizeToReceive, MPI_FLOAT, sender, tag, MPI_COMM_WORLD, &req);
+                // cout << format("IRecvSplit worker {} last tag {}", worker->rank, tag) << endl; 
+                reqs.push_back(req);
+
+            } else {
+                MPI_Request req;
+                int tag = generateChunkTag(blockId, 0);
+                MPI_Irecv(buffer, compareSize, MPI_FLOAT, sender, tag, MPI_COMM_WORLD, &req);
+                reqs.push_back(req);
+            }
+        }
+        
+
+
+        // void IRecvSplit(float* buffer, size_t blockId, idx_t compareSize, size_t sender, vector<MPI_Request>& reqs) {
+        //     if(compareSize > INT_MAX) {
+        //         cout << YELLOW << format("WARNING: block {} compare size too big , split into {}", blockId, compareSize / INT_MAX + 1) << RESET << endl;
+        //         idx_t sizeToSend = compareSize;
+        //         while(sizeToSend > INT_MAX) {
+        //             MPI_Request req;
+        //             //TODO 这样不行，Irecv顺序不一样
+        //             MPI_Irecv(buffer + compareSize - sizeToSend, INT_MAX, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &req);
+        //             reqs.push_back(req);
+        //             sizeToSend -= INT_MAX;
+        //         }
+        //         MPI_Irecv(buffer + compareSize - sizeToSend, sizeToSend, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &reqs[0]);
+        //     } else {
+        //         MPI_Irecv(buffer, compareSize, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &reqs[0]);
+        //     }
+        // }
+        Worker* worker;
+    public:
+
+        DistanceBufferPool(const InitInfo& info, Worker* worker) : worker(worker) {
+            // distancesForBlocks = vector<std::unique_ptr<float[]>>(info.blockCount);
+            MAXCHUNKSIZE = INT_MAX;
+            distancesForBlocks = vector<std::unique_ptr<float[]>>();
+            waitList = queue<Action>();
+            try {
+                for (size_t i = 0; i < info.blockCount; i++) {
+                    distancesForBlocks.push_back(std::make_unique<float[]>(info.presumeBlockDistancesSize));
+                }
+                // for (size_t i = 0; i < info.blockCount; i++) {
+                //     distancesForBlocks[size] = std::make_unique<float[]>(info.presumeBlockDistancesSize);
+                //     size++;
+                //     // cout << format("buffer {}", size) << endl;
+                // }
+                cout << YELLOW << format("use Normal Alloc") << RESET << endl;
+            } catch (const std::bad_alloc& e) { 
+                useDynamicAlloc = true;
+                // blockIds = vector<int>(size, -1);
+                // used = vector<bool>(size, false);
+                // spareBlock = size;
+                blockIds = vector<int>(distancesForBlocks.size(), -1);
+                used = vector<bool>(distancesForBlocks.size(), false);
+                spareBlock = distancesForBlocks.size();
+                cout << YELLOW << format("use Dynamic Alloc") << RESET << endl;
+            }
+            // for (size_t i = 0; i < info.blockCount / 2; i++) {
+            //     distancesForBlocks[size] = std::make_unique<float[]>(info.presumeBlockDistancesSize);
+            //     size++;
+            //     // cout << format("buffer {}", size) << endl;
+            // }
+            // useDynamicAlloc = true;
+            cout << format("buffer size {}", distancesForBlocks.size()) << endl;
+        }
+        float* getBuffer(size_t blockId) { //获取blockId的缓冲区
+            if(!useDynamicAlloc) {
+                return distancesForBlocks[blockId].get();
+            }
+            for (int i = 0; i < distancesForBlocks.size(); i++) {
+                if(used[i] && (blockIds[i] == blockId)) {
+                    return distancesForBlocks[i].get();
+                }
+            }
+            cerr << RED << format("getBuffer {} not found", blockId) << RESET << endl;
+            return nullptr;
+        }
+
+        bool IRecv(size_t blockId, idx_t compareSize, size_t sender, vector<MPI_Request>& reqs) {
+            if(!useDynamicAlloc) {
+                IRecvSplit(distancesForBlocks[blockId].get(), blockId, compareSize, sender, reqs);
+                return true;
+            } else {
+                if(spareBlock <= 0) {
+                    waitList.push(Action(blockId, compareSize, sender));
+                    return false;
+                } else {
+                    for (int i = 0; i < distancesForBlocks.size(); i++) {
+                        if(used[i] == false) {
+                            used[i] = true;
+                            blockIds[i] = blockId;
+                            // MPI_Irecv(distancesForBlocks[i].get(), compareSize, MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &reqs[0]);
+                            IRecvSplit(distancesForBlocks[i].get(), blockId, compareSize, sender, reqs);
+                            cout << format("Irecv {}", blockId) << endl;
+                            spareBlock--;
+                            return true;
+                        }
+                    }
+                }
+                return false;
+                // cerr << ""
+            }
+        }
+        void ISendSplit(const float* buffer, size_t blockId, idx_t compareSize, size_t receiver, std::vector<MPI_Request>& reqs) {
+            cout << YELLOW << format("WARNING: block {} ISendSplit, split into {}", blockId, (compareSize + MAXCHUNKSIZE - 1) / MAXCHUNKSIZE) << RESET << endl;
+            idx_t sizeLeft = compareSize;
+            idx_t offset = 0;
+            int chunkIndex = 0;
+
+            while (sizeLeft > 0) {
+                int chunkSize = static_cast<int>(std::min<idx_t>(sizeLeft, MAXCHUNKSIZE));
+                int tag = generateChunkTag(blockId, chunkIndex);
+                MPI_Request req;
+
+                MPI_Isend(buffer + offset, chunkSize, MPI_FLOAT, receiver, tag, MPI_COMM_WORLD, &req);
+                // cout << format("ISendSplit worker {} tag {}", worker->rank, tag) << endl; 
+                reqs.push_back(req);
+
+                offset += chunkSize;
+                sizeLeft -= chunkSize;
+                chunkIndex++;
+            }
+        }
+        bool use(size_t blockId) { //要求分配缓冲区给blockId的block，返回分配是否成功
+            if(!useDynamicAlloc) {
+                return true;
+            } else {
+                if(spareBlock <= 0) {
+                    waitList.push(Action(blockId));
+                    return false;
+                } 
+                for (int i = 0; i < distancesForBlocks.size(); i++) {
+                    if(used[i] == false) {
+                        used[i] = true;
+                        blockIds[i] = blockId;
+                        cout << format("use {}", blockId) << endl;
+                        spareBlock--;
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+        bool releaseBuffer(size_t blockId) { //释放缓冲区
+            if(!useDynamicAlloc) {
+                return true;
+            } else {
+                for (int i = 0; i < distancesForBlocks.size(); i++) {
+                    if(used[i] && (blockIds[i] == blockId)) {
+                        used[i] = false;
+                        blockIds[i] = -1;
+                        cout << format("release {}", blockId) << endl;
+                        spareBlock++;
+                        if(!waitList.empty()) {
+                            auto action = waitList.front();
+                            if(action.use) {
+                                use(action.blockId);
+                            } else {
+                                IRecv(action.blockId, action.compareSize, action.sender, worker->disRequests[action.blockId]);
+                            }
+                            waitList.pop();
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+    };
+    std::unique_ptr<DistanceBufferPool> distanceBufferPool;
 
     // idx_t presumeBlockDistancesSize;
     InitInfo info;
@@ -244,7 +336,8 @@ public:
     //vector的每一个元素对应一个block
     // vector<MPI_Request> infoRequests;
     vector<vector<MPI_Request>> disRequests;
-    vector<MPI_Request> sendRequests;
+    vector<vector<MPI_Request>> sendRequests;
+    // vector<MPI_Request> sendRequests;
     vector<MPI_Request> sendDistanceRequests;
     vector<MPI_Request> sendIdRequests;
     
@@ -278,9 +371,11 @@ public:
     idx_t getTotalQueryCompareSize(size_t blockId) {
         size_t queryStart = blockId * blockSize;
         idx_t totalQueryCompareSize = queryCompareSizePreSum[queryStart + blockSize] - queryCompareSizePreSum[queryStart];
-        // if((double)queryCompareSizePreSum[queryStart + blockSize] - queryCompareSizePreSum[queryStart] > INT_MAX) {
-        //     cerr << RED << "increase block size" << RESET << endl;
-        //     throw std::invalid_argument("increase block size");
+        // if(totalQueryCompareSize > INT_MAX) {
+        //     // cerr << RED << "increase block size" << RESET << endl;
+        //     cerr << YELLOW << "warning : totalQueryCompareSize > INT_MAX" << RESET << endl;
+        //     // cout << totalQueryCompareSize << endl;
+        //     // throw std::invalid_argument("increase block size");
         // }
         return totalQueryCompareSize;
     }

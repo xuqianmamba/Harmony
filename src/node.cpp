@@ -16,20 +16,22 @@ namespace tribase {
 // }
 
 void Worker::init(int rank, bool blockSend) {
-    MyStopWatch watch(false);
+    MyStopWatch watch(true);
 
     this->rank = rank;
     this->blockSend = blockSend;
 
     // InitInfo
     MPI_Bcast(&info, sizeof(InitInfo), MPI_BYTE, 0, MPI_COMM_WORLD);
-    // info.print();
+    info.print();
 
     index = std::make_unique<Index>(info.d, info.nlist, info.nprobe);
+    watch.print("index");
 
     // IVF的大小，IVF的向量表示
     listSizes = std::make_unique<size_t[]>(info.nlist);
     MPI_Bcast(listSizes.get(), info.nlist * sizeof(size_t), MPI_BYTE, 0, MPI_COMM_WORLD);
+    watch.print("listSizes");
 
 #pragma omp parallel for
     for (size_t i = 0; i < info.nlist; i++) {
@@ -92,22 +94,30 @@ void Worker::init(int rank, bool blockSend) {
     }
     // init_result(METRIC_L2, presumeNq * presumeK, distanceHeap.get(), idHeap.get());
     
+    watch.print("small malloc");
     blockDistancesSize = 2 * presumeNq / info.blockCount * info.nb;
-    distancesForBlocks = vector<std::unique_ptr<float[]>>(info.blockCount);
-    for (size_t i = 0; i < info.blockCount; i++) {
-        distancesForBlocks[i] = std::make_unique<float[]>(blockDistancesSize);
-    }
+    
+    // distancesForBlocks = vector<std::unique_ptr<float[]>>(info.blockCount);
+    // for (size_t i = 0; i < info.blockCount; i++) {
+    //     distancesForBlocks[i] = std::make_unique<float[]>(blockDistancesSize);
+    // }
     // blockSize = presumeNq / info.blockCount;
     // presumeBlockDistancesSize = presumeNq / info.blockCount * info.nb * 2;
     // cout << presumeBlockDistancesSize << "blockD" << endl;
-    // distanceBufferPool = std::make_unique<DistanceBufferPool>(info, this);
+    distanceBufferPool = std::make_unique<DistanceBufferPool>(info, this);
     // watch.print(format("node {} distancesForBlocks", rank));
 
-    disRequests = vector<vector<MPI_Request>>(info.blockCount);
-    for(int i = 0; i < disRequests.size(); i++) {
-        disRequests[i] = vector<MPI_Request>(1);
-    }
-    sendRequests = vector<MPI_Request>(info.blockCount);
+    disRequests.clear();
+    sendRequests.clear();
+    disRequests.resize(info.blockCount);
+    sendRequests.resize(info.blockCount);
+    // disRequests = vector<vector<MPI_Request>>(info.blockCount);
+    // sendRequests = vector<vector<MPI_Request>>(info.blockCount);
+    // for(int i = 0; i < disRequests.size(); i++) {
+    //     disRequests[i] = vector<MPI_Request>();
+    //     sendRequests[i] = vector<MPI_Request>();
+    // }
+    // sendRequests = vector<MPI_Request>(info.blockCount);
     sendDistanceRequests = vector<MPI_Request>(info.blockCount);
     sendIdRequests = vector<MPI_Request>(info.blockCount);
 
@@ -179,19 +189,19 @@ void Worker::search(bool cut) {
     for (size_t blockId = 0; blockId < info.blockCount; blockId++) {
         if(recvPrevWorker[blockId] == 0) {
             //直接标记使用
-            // distanceBufferPool->use(blockId);
+            distanceBufferPool->use(blockId);
         }
     }
     for (size_t blockId = 0; blockId < info.blockCount; blockId++) {
         if(recvPrevWorker[blockId] != 0) {
             size_t sender = recvPrevWorker[blockId];
             // tag 当做blockId
-            MPI_Irecv(distancesForBlocks[blockId].get(), getTotalQueryCompareSize(blockId), MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &disRequests[blockId][0]);
+            // MPI_Irecv(distancesForBlocks[blockId].get(), getTotalQueryCompareSize(blockId), MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &disRequests[blockId][0]);
             // MPI_Irecv(distanceBufferPool->getBuffer(blockId), getTotalQueryCompareSize(blockId), MPI_FLOAT, sender, blockId, MPI_COMM_WORLD, &disRequests[blockId]);
-            // bool suc = distanceBufferPool->IRecv(blockId, getTotalQueryCompareSize(blockId), sender, disRequests[blockId]);
-            // if(!suc) {
-            //     break;
-            // }
+            bool suc = distanceBufferPool->IRecv(blockId, getTotalQueryCompareSize(blockId), sender, disRequests[blockId]);
+            if(!suc) {
+                break;
+            }
             // cout << format("node({}) waiting for block({}) from node({})", rank, blockId, sender) << endl;
         } 
     }
@@ -231,7 +241,10 @@ void Worker::search(bool cut) {
             // printVector(finished, GREEN, format("node{} finished", rank));
 
             if(blockSend && !shouldSendHeap(blockId)) {
-                MPI_Wait(&sendRequests[blockId], MPI_STATUS_IGNORE);
+                for(auto& req : sendRequests[blockId]) {
+                    MPI_Wait(&req, MPI_STATUS_IGNORE);
+                }
+                // MPI_Wait(&sendRequests[blockId], MPI_STATUS_IGNORE);
                 waitTime += watch.watch.elapsedSeconds();
                 watch.print(format("node({}) block {} MPI_Wait", rank, blockId));
             }
@@ -239,10 +252,11 @@ void Worker::search(bool cut) {
             // }
 
         } else {
-            int isReceived;
-            MPI_Status stat;
+            //应该检查是否应该释放缓冲区
             bool testFail = false;
             for(auto& req : disRequests[blockId]) {
+                int isReceived;
+                MPI_Status stat;
                 MPI_Test(&req, &isReceived, &stat);
                 if(!isReceived) {
                     testFail = true;
@@ -263,7 +277,10 @@ void Worker::search(bool cut) {
 
                 watch.reset();
                 if(blockSend && !shouldSendHeap(blockId)) {
-                    MPI_Wait(&sendRequests[blockId], MPI_STATUS_IGNORE);
+                    for(auto& req : sendRequests[blockId]) {
+                        MPI_Wait(&req, MPI_STATUS_IGNORE);
+                    }
+                    // MPI_Wait(&sendRequests[blockId], MPI_STATUS_IGNORE);
                     waitTime += watch.watch.elapsedSeconds();
                     watch.print(format("node({}) block {} MPI_Wait", rank, blockId));
                 }
@@ -281,7 +298,11 @@ void Worker::search(bool cut) {
     if(!blockSend) {
         for(size_t blockId = 0; blockId < info.blockCount; blockId++) {
             if(!shouldSendHeap(blockId)) {
-                MPI_Wait(&sendRequests[blockId], MPI_STATUS_IGNORE);
+                cout << "sendRequests[blockId].size" << sendRequests[blockId].size() << endl;
+                for(auto& req : sendRequests[blockId]) {
+                    MPI_Wait(&req, MPI_STATUS_IGNORE);
+                }
+                // MPI_Wait(&sendRequests[blockId], MPI_STATUS_IGNORE);
             }
         }
     }
@@ -296,8 +317,8 @@ void Worker::searchBlock(size_t blockId, bool cut) {
     MyStopWatch searchWatch(true, "searchBlock");
 
 
-    // float* distanceBuffer = distanceBufferPool->getBuffer(blockId);
-    float* distanceBuffer = distancesForBlocks[blockId].get();
+    float* distanceBuffer = distanceBufferPool->getBuffer(blockId);
+    // float* distanceBuffer = distancesForBlocks[blockId].get();
 
     size_t queryStart = blockId * blockSize;
     idx_t totalQueryCompareSize = getTotalQueryCompareSize(blockId);
@@ -310,6 +331,10 @@ void Worker::searchBlock(size_t blockId, bool cut) {
         cerr << "Error blockDistancesSize too small" << endl;
         exit(1);
     }
+    // if(totalQueryCompareSize > INT_MAX) {
+    //     cerr << "totalQueryCompareSize > INT_MAX : " << totalQueryCompareSize << endl;
+    //     exit(1);
+    // }
 
     // uniWatch.print(format("node {} index search start", rank), false);
 
@@ -424,7 +449,8 @@ void Worker::searchBlock(size_t blockId, bool cut) {
     //     }
     //     MPI_Isend(distanceBuffer + totalQueryCompareSize - sizeToSend, sizeToSend, MPI_FLOAT, sendNextWorker[blockId], blockId, MPI_COMM_WORLD, &sendRequests[blockId]);
     // } else {
-        MPI_Isend(distanceBuffer, totalQueryCompareSize, MPI_FLOAT, sendNextWorker[blockId], blockId, MPI_COMM_WORLD, &sendRequests[blockId]);
+        // MPI_Isend(distanceBuffer, totalQueryCompareSize, MPI_FLOAT, sendNextWorker[blockId], blockId, MPI_COMM_WORLD, &sendRequests[blockId]);
+        distanceBufferPool->ISendSplit(distanceBuffer, blockId, totalQueryCompareSize, sendNextWorker[blockId], sendRequests[blockId]);
     // }
     }
     waitTime += watch.watch.elapsedSeconds();
