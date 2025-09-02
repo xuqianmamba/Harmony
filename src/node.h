@@ -22,6 +22,9 @@ using namespace std;
 
 const int presumeNq = 10000;
 
+float calculatedDistance(const float* vec1, const float* vec2, size_t size, MetricType metric);
+void try_heap_replace_top(size_t k, float* bh_val, idx_t* bh_ids, float val, idx_t id, MetricType metric);
+
 class Worker {
 private:
 public:
@@ -429,6 +432,7 @@ public:
     // 代表一次搜索请求中需要包含的信息
 
     size_t rank = 0;
+    MetricType metric;
     size_t nq = 0;
     size_t k = 0;
     std::unique_ptr<size_t[]> listSizes;         // nlist个聚类的向量数
@@ -454,7 +458,7 @@ public:
     bool cut = false;
 
     // void init(int rank, tribase::Index* index) {
-    void init(int rank);
+    void init(int rank, MetricType metric);
     
     
     void single_thread_search_simple(size_t n, const float* queries, size_t k, float* distances, idx_t* labels, idx_t* listidqueries, float* heapTops);

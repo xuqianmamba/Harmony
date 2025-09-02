@@ -23,10 +23,10 @@ bool str_lower_equal(const std::string& a, const std::string& b) {
                       [](char a, char b) { return std::tolower(a) == std::tolower(b); });
 }
 
-int workerMain(int rank, bool cut, Index::SearchMode mode, bool blockSend, bool minorCut) {
+int workerMain(int rank, bool cut, Index::SearchMode mode, bool blockSend, bool minorCut, MetricType metric) {
     if (mode == Index::SearchMode::DIVIDE_IVF) {
         BaseWorker worker;
-        worker.init(rank);
+        worker.init(rank, metric);
         worker.search(cut);
     } else if (mode == Index::SearchMode::DIVIDE_DIM) {
         Worker node;
@@ -108,9 +108,9 @@ int main(int argc, char* argv[]) {
         .action([](const std::string& value) -> size_t { return std::stoul(value); });
     program.add_argument("--warmup_list")
         .help("how many lists are used to warmup heap")
-        .default_value(10ul)
+        .default_value(0ul)
         .action([](const std::string& value) -> size_t { return std::stoul(value); });
-    program.add_argument("--disablePruning").help("set pruning disabled").default_value(false).implicit_value(true);
+    program.add_argument("--cut").help("set pruning enabled").default_value(false).implicit_value(true);
     program.add_argument("--minorCut").help("set pruning enabled").default_value(false).implicit_value(true);
     program.add_argument("--disableOrderOpt")
         .help("disable block search order optimization")
@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
         .action([](const std::string& value) -> size_t { return std::stoul(value); });
     program.add_argument("--mode")
         .help("The mode of search")
-        .default_value(std::string("group"))
+        .default_value(std::string("original"))
         .choices("base", "group", "block", "original", "brute");  // Only these choices are valid
     program.add_argument("--HardInBalance").help("enable hard inBalance").default_value(false).implicit_value(true);
     program.add_argument("--HardInBalanceRatio")
@@ -185,9 +185,11 @@ int main(int argc, char* argv[]) {
     workerCount--;
 
     bool disableOrderOptimize = program.get<bool>("disableOrderOpt");
-    bool pruning = !program.get<bool>("disablePruning");
+    bool cut = program.get<bool>("cut");
     bool minorCut = program.get<bool>("minorCut");
     bool run_faiss = program.get<bool>("run_faiss");
+    // bool period = program.get<bool>("period");
+    // bool inBalance = program.get<bool>("inBalance");
     bool hardInBalance = program.get<bool>("HardInBalance");
     size_t hardInBalanceTeam = program.get<size_t>("HardInBalanceTeam");
     float inBalanceRatio = program.get<float>("HardInBalanceRatio");
@@ -202,6 +204,9 @@ int main(int argc, char* argv[]) {
     bool blockSend = program.get<bool>("blockSend");
     bool fullWarmUp = program.get<bool>("fullWarmUp");
 
+    char* job_id = std::getenv("SLURM_JOB_ID");
+    char* node_list = std::getenv("SLURM_JOB_NODELIST");
+    char* num_nodes = std::getenv("SLURM_NNODES");
 
     size_t groupCount = program.get<size_t>("group");
     size_t teamCount = program.get<size_t>("team");
@@ -271,10 +276,21 @@ int main(int argc, char* argv[]) {
     //     throw std::invalid_argument("block count and node cound must be provided at the same time");
     // }
 
+    std::string metric_str = program.get<std::string>("metric");
+    MetricType metric;
+
+    if (str_lower_equal(metric_str, "l2")) {
+        metric = MetricType::METRIC_L2;
+    } else if (str_lower_equal(metric_str, "ip")) {
+        metric = MetricType::METRIC_IP;
+    } else {
+        throw std::runtime_error("Invalid metric type");
+    }
+
     if (rank != 0) {
         if (!run_faiss) {
             MPI_Barrier(MPI_COMM_WORLD);
-            workerMain(rank, pruning, searchMode, blockSend, minorCut);
+            workerMain(rank, cut, searchMode, blockSend, minorCut, metric);
         }
     } else {
         // MyStopWatch watch(true, "queryWatch", CRAN);
@@ -307,8 +323,6 @@ int main(int argc, char* argv[]) {
         std::string dataset = program.get<std::string>("dataset");
         std::string input_format = program.get<std::string>("input_format");
         std::string output_format = program.get<std::string>("output_format");
-        std::string metric_str = program.get<std::string>("metric");
-        MetricType metric;
         size_t loop = program.get<size_t>("loop");
         size_t nlist = program.get<size_t>("nlist");
         bool verbose = program.get<bool>("verbose");
@@ -322,13 +336,7 @@ int main(int argc, char* argv[]) {
             throw std::invalid_argument("early_stop is only allowed when ratios is 1.0");
         }
 
-        if (str_lower_equal(metric_str, "l2")) {
-            metric = MetricType::METRIC_L2;
-        } else if (str_lower_equal(metric_str, "ip")) {
-            metric = MetricType::METRIC_IP;
-        } else {
-            throw std::runtime_error("Invalid metric type");
-        }
+        cout << CRAN << format("Metric: {}", metric_str) << RESET << endl;
 
         bool train_only = program.get<bool>("train_only");
         bool cache = program.get<bool>("cache");
@@ -340,7 +348,7 @@ int main(int argc, char* argv[]) {
         std::string query_path =
             std::format("{}/{}/origin/{}_query.{}", benchmarks_path, dataset, dataset, input_format);
         std::string groundtruth_path =
-            std::format("{}/{}/result/groundtruth_{}.{}", benchmarks_path, dataset, k, output_format);
+            std::format("{}/{}/result/groundtruth_{}_{}.{}", benchmarks_path, dataset, k, metric_str, output_format);
         // std::format("{}/{}/result/groundtruth_{}{}.{}", benchmarks_path, dataset, k, inBalanceString, output_format);
         std::string log_path;
         std::string log_path_simple;
@@ -349,11 +357,11 @@ int main(int argc, char* argv[]) {
             log_path = tmp_csv_path;
         } else {
             if (!run_faiss) {
-                log_path = std::format("{}/{}/result/log.csv", benchmarks_path, dataset);
-                log_path_simple = std::format("{}/{}/result/log_simple.csv", benchmarks_path, dataset);
+                log_path = std::format("{}/{}/result/log_{}.csv", benchmarks_path, dataset, metric_str);
+                // log_path_simple = std::format("{}/{}/result/log_simple.csv", benchmarks_path, dataset);
             } else {
                 // log_path = std::format("{}/{}/result/log_faiss.csv", benchmarks_path, dataset);
-                log_path = std::format("{}/{}/result/log_faiss{}.csv", benchmarks_path, dataset, inBalanceString);
+                log_path = std::format("{}/{}/result/log_faiss_{}_{}.csv", benchmarks_path, dataset, metric_str, inBalanceString);
             }
         }
 
@@ -428,19 +436,19 @@ int main(int argc, char* argv[]) {
             for (int i = 0; i < 8; i++) {
                 // target is a subset of i
                 if ((target & i) == target) {
-                    std::string index_path = std::format("{}/{}/index/index_nlist_{}_opt_{}_subNprobeRatio_{}.index",
-                                                         benchmarks_path, dataset, nlist, i, sub_nprobe_ratio);
+                    std::string index_path = std::format("{}/{}/index/index_nlist_{}_opt_{}_subNprobeRatio_{}_{}.index",
+                                                         benchmarks_path, dataset, nlist, i, sub_nprobe_ratio, metric_str);
                     if (std::filesystem::exists(index_path)) {
                         return index_path;
                     }
                 }
             }
-            return std::format("{}/{}/index/index_nlist_{}_opt_{}_subNprobeRatio_{}.index", benchmarks_path, dataset,
-                               nlist, target, sub_nprobe_ratio);
+            return std::format("{}/{}/index/index_nlist_{}_opt_{}_subNprobeRatio_{}_{}.index", benchmarks_path, dataset,
+                               nlist, target, sub_nprobe_ratio, metric_str);
         };
 
         auto get_faiss_index_path = [&]() {
-            return std::format("{}/{}/index/faiss_index_nlist_{}.index", benchmarks_path, dataset, nlist);
+            return std::format("{}/{}/index/faiss_index_nlist_{}_{}.index", benchmarks_path, dataset, nlist, metric_str);
         };
 
         std::string index_path = get_index_path();
@@ -493,7 +501,7 @@ int main(int argc, char* argv[]) {
 
         // init faiss_time file
         std::string faiss_time_path =
-            std::format("{}/{}/result/faiss_result_nlist_{}.txt", benchmarks_path, dataset, nlist);
+            std::format("{}/{}/result/faiss_result_nlist_{}_{}.txt", benchmarks_path, dataset, nlist, metric_str);
         // std::format("{}/{}/result/faiss_result_nlist_{}{}.txt", benchmarks_path, dataset, nlist, inBalanceString);
         std::vector<double> faiss_time(nprobes.size(), 0.0);
         std::ifstream faiss_time_input(faiss_time_path);
@@ -513,8 +521,16 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        faiss::IndexFlatIP quantizerIP(d);
         faiss::IndexFlatL2 quantizer(d);
-        std::unique_ptr<faiss::IndexIVFFlat> index_faiss = std::make_unique<faiss::IndexIVFFlat>(&quantizer, d, nlist);
+        std::unique_ptr<faiss::IndexIVFFlat> index_faiss;
+        if(metric == METRIC_IP) {
+            index_faiss = std::make_unique<faiss::IndexIVFFlat>(&quantizerIP, d, nlist, faiss::MetricType::METRIC_INNER_PRODUCT);
+        } else {
+            index_faiss = std::make_unique<faiss::IndexIVFFlat>(&quantizer, d, nlist);
+        }
+        // std::unique_ptr<faiss::IndexIVFFlat> index_faiss = std::make_unique<faiss::IndexIVFFlat>(&quantizer, d, nlist);
+        
 
         // train faiss and add base set to index_faiss
         // write to index file
@@ -615,6 +631,13 @@ int main(int argc, char* argv[]) {
                 for (size_t j = 0; j < loop; j++) {
                     index_faiss->search(nq, query.get(), k, tmp_faiss_dis.get(), tmp_faiss_labels.get());
                 }
+                // for (size_t j = 0; j < 5; j++) {
+                //     printVector(ground_truth_I.get() + j * k, k, GREEN);
+                //     printVector(tmp_faiss_labels.get() + j * k, k, BLUE);
+                //     printVector(ground_truth_D.get() + j * k, k, RED);
+                //     printVector(tmp_faiss_dis.get() + j * k, k, MAG);
+                //     cout << endl;
+                // }
                 float recall = calculate_recall(tmp_faiss_labels.get(), tmp_faiss_dis.get(), ground_truth_I.get(),
                                                 ground_truth_D.get(), nq, k, metric);
                 float r2 = calculate_r2(tmp_faiss_labels.get(), tmp_faiss_dis.get(), ground_truth_I.get(),
@@ -668,8 +691,8 @@ int main(int argc, char* argv[]) {
 
         auto doSearch = [&](auto nprobe, auto opt_level, auto ratio, auto early_stop_flag, auto f_time,
                             float* distances, idx_t* labels, Index::Param* param) -> Stats {
-            auto path = std::format("{}/{}/index/index_nlist_{}_{}.index", benchmarks_path, dataset, nlist,
-                                    index.to_string(param->mode));
+            auto path = std::format("{}/{}/index/index_nlist_{}_{}_{}.index", benchmarks_path, dataset, nlist,
+                                    index.to_string(param->mode), metric_str);
             // if(!std::filesystem::exists(path)) {
             //     index.save_index(path, param->mode);
             // }
@@ -718,6 +741,14 @@ int main(int argc, char* argv[]) {
                 index.postSearch();
             }
 
+            for(int i = 0; i < 5; i++) {
+                std::cout << "Q" << i << " " << std::endl;
+                printVector(distances + i * k, k, BLUE);
+                printVector(ground_truth_D.get() + i * k, k, BLUE);
+                printVector(labels + i * k, k, GREEN);
+                printVector(ground_truth_I.get() + i * k, k, GREEN);
+            }
+
             float recall =
                 calculate_recall(labels, distances, ground_truth_I.get(), ground_truth_D.get(), nq, k, metric);
             float recall_loose =
@@ -736,8 +767,8 @@ int main(int argc, char* argv[]) {
             stats.worker = workerCount;
             stats.disableOrderOptimize = disableOrderOptimize;
             // stats.divideIVF = divideIVF;
-            stats.pruning = pruning;
-            // stats.nodeList = node_list;
+            stats.cut = cut;
+            stats.nodeList = node_list;
             stats.nb = nb;
             stats.nq = nq;
             stats.d = d;
@@ -778,12 +809,16 @@ int main(int argc, char* argv[]) {
                     // oriStat.print();
                     // std::cout << RESET;
 
+                    // if(searchMode != Index::SearchMode::ORIGINAL) {
                     MPI_Barrier(MPI_COMM_WORLD);
+                    // }
+                    // std::cout << YELLOW;
 
                     Index::Param param;
                     param.orderOptimize = !disableOrderOptimize;
                     param.mode = searchMode;
-                    param.cut = pruning;
+                    // param.period = period;
+                    param.cut = cut;
                     param.fullWarmUp = fullWarmUp;
                     param.groupCount = groupCount;
                     param.teamCount = teamCount;
@@ -833,6 +868,7 @@ int main(int argc, char* argv[]) {
                         stat.addTime = index.addTime;
                         stat.preSearchTime = index.preSearchTime;
                     }
+
                     stat.print();
                     // stat.myToCsv(log_path, true, dataset);
                     stat.myToCsv(log_path, true, dataset + inBalanceString);

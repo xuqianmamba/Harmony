@@ -15,6 +15,28 @@ namespace tribase {
 
 // }
 
+float calculatedDistance(const float* vec1, const float* vec2, size_t size, MetricType metric) {
+    float dis = 0;
+    if (metric == MetricType::METRIC_IP) {
+        dis = calculatedInnerProduct(vec1, vec2, size);
+    } else {
+        dis = calculatedEuclideanDistance(vec1, vec2, size);
+    }
+    return dis;
+}
+
+void try_heap_replace_top(size_t k, float* bh_val, idx_t* bh_ids, float val, idx_t id, MetricType metric) {
+    if (metric == MetricType::METRIC_IP) {
+        if(val > bh_val[0]) {
+            heap_replace_top<MetricType::METRIC_IP>(k, bh_val, bh_ids, val, id);
+        }
+    } else {
+        if(val < bh_val[0]) {
+            heap_replace_top<MetricType::METRIC_L2>(k, bh_val, bh_ids, val, id);
+        }
+    } 
+}
+
 void Worker::init(int rank, bool blockSend) {
     MyStopWatch watch(true);
 
@@ -468,10 +490,11 @@ void Worker::searchBlock(size_t blockId, bool cut) {
 
 }
 
-void BaseWorker::init(int rank) {
+void BaseWorker::init(int rank, MetricType metric) {
         MyStopWatch watch(true);
 
         this->rank = rank;
+        this->metric = metric;
         // this->index = index;
 
         // 1.InitInfo
@@ -542,7 +565,7 @@ void BaseWorker::init(int rank) {
 
         distances = std::make_unique<float[]>(presumeNq * presumeK);
         labels = std::make_unique<idx_t[]>(presumeNq * presumeK);
-        init_result(METRIC_L2, presumeNq * presumeK, distances.get(), labels.get());
+        init_result(metric, presumeNq * presumeK, distances.get(), labels.get());
 
         MPI_Barrier(MPI_COMM_WORLD); //对应preSearch最后的barrier
 
@@ -763,10 +786,12 @@ void BaseWorker::single_thread_search_fast(size_t n, const float* queries, size_
                 for (size_t v = 0; v < list_size; v++) {
                     const float* candicate = list.get_candidate_codes() + v * index->d;
                     float dis = 0;
-                    dis = calculatedEuclideanDistance(queries + i * index->d, candicate, index->d);
+                    // dis = calculatedEuclideanDistance(queries + i * index->d, candicate, index->d);
+                    dis = calculatedDistance(queries + i * index->d, candicate, index->d, metric);
                     if (dis < simi[0]) {
                         //比堆顶
-                        heap_replace_top<METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
+                        try_heap_replace_top(k, simi, idxi, dis, list.get_candidate_id()[v], metric);
+                        // heap_replace_top<MetricType::METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
                     }
                 }
                 // if (opt_level & OptLevel::OPT_TRIANGLE) {
@@ -870,30 +895,44 @@ void BaseWorker::single_thread_search_simple(size_t n, const float* queries, siz
                     const float* query = queries + i * index->d;
                     for(int check = 0; check < numCheck; check++) {
                         if(check == numCheck - 1) {
-                            dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, index->d - check * checkDim);
+                            dis += calculatedDistance(query + checkDim * check, candicate + checkDim * check, index->d - check * checkDim, metric);
+                            // dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, index->d - check * checkDim);
                         } else {
-                            dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, checkDim);
-                            if(dis > heapTops[i]) {
+                            // dis += calculatedEuclideanDistance(query + checkDim * check, candicate + checkDim * check, checkDim);
+                            dis += calculatedDistance(query + checkDim * check, candicate + checkDim * check, checkDim, metric);
+                            if(metric == MetricType::METRIC_L2 && dis > heapTops[i]) {
                                 dis = INFINITY;
+                                cutCount += numCheck - check - 1;
+                                break;
+                            } else if(metric == MetricType::METRIC_IP && dis < heapTops[i]) {
+                                dis = -INFINITY;
                                 cutCount += numCheck - check - 1;
                                 break;
                             }
                         }
                     }
-                    if (dis < simi[0]) {
+                    // if (dis < simi[0]) {
                         //比堆顶
-                        heap_replace_top<METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
-                    }
+                        // if (metric == MetricType::METRIC_IP) {
+                        //     heap_replace_top<MetricType::METRIC_IP>(k, simi, idxi, dis, list.get_candidate_id()[v]);
+                        // } else {
+                        //     heap_replace_top<MetricType::METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
+                        // }
+                        // try_heap_replace_top(k, simi, idxi, dis, list.get_candidate_id()[v], metric);
+                    // }
+                    try_heap_replace_top(k, simi, idxi, dis, list.get_candidate_id()[v], metric);
                 }
             } else {
                 for (size_t v = 0; v < list.get_list_size(); v++) {
                     const float* candicate = list.get_candidate_codes() + v * index->d;
                     float dis = 0;
-                    dis = calculatedEuclideanDistance(queries + i * index->d, candicate, index->d);
-                    if (dis < simi[0]) {
-                        //比堆顶
-                        heap_replace_top<METRIC_L2>(k, simi, idxi, dis, list.get_candidate_id()[v]);
-                    }
+                    dis = calculatedDistance(queries + i * index->d, candicate, index->d, metric);
+                    // dis = calculatedEuclideanDistance(queries + i * index->d, candicate, index->d);
+                    // if (dis < simi[0]) {
+                    //     //比堆顶
+                    //     try_heap_replace_top(k, simi, idxi, dis, list.get_candidate_id()[v], metric);
+                    // }
+                    try_heap_replace_top(k, simi, idxi, dis, list.get_candidate_id()[v], metric);
                 }
             }
 

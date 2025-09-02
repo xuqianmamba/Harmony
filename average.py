@@ -9,18 +9,20 @@ def process_file(input_file, combined_data):
     with open(input_file, 'r') as infile:
         reader = csv.DictReader(infile)
         for row in reader:
-            key = tuple(row[col] for col in ['dataset', 'mode', 'nb', 'nq', 'd', 'nlist', 'nprobe', 'k', 'orderOptimize', 'UnblockSend', 'cut', 'block', 'worker', 'group', 'team', 'ratio', 'teamRatio'])
+            key = tuple(row[col] for col in ['dataset', 'mode', 'nb', 'nq', 'd', 'nlist', 'nprobe', 'k', 'orderOptimize', 'UnblockSend', 'cut', 'block', 'worker', 'group', 'team', 'ratio', 'teamRatio', 'brute_ratio'])
             time_speedup = float(row['time_speedup'])
             recall = float(row['1-recall'])  # Read the recall value
+            recall_loose = float(row['1-recall_loose'])  # Read the recall value
             query_time = float(row['query_time'])
             original_time = float(row['original_time'])
             var = float(row['variance'])
             
             if key not in data:
-                data[key] = {'time_speedups': [], 'recalls': [], 'query_time' : [], 'original_time' : [], 'var' : []}
+                data[key] = {'time_speedups': [], 'recalls': [], 'recall_looses': [], 'query_time' : [], 'original_time' : [], 'var' : []}
             
             data[key]['time_speedups'].append(time_speedup)
             data[key]['recalls'].append(recall)
+            data[key]['recall_looses'].append(recall_loose)
             data[key]['query_time'].append(query_time)
             data[key]['original_time'].append(original_time)
             data[key]['var'].append(var)
@@ -31,16 +33,17 @@ def process_file(input_file, combined_data):
     for key, values in data.items():
         avg_time_speedup = sum(values['time_speedups']) / len(values['time_speedups'])
         avg_recall = sum(values['recalls']) / len(values['recalls'])  # Calculate average recall
+        avg_recall_loose = sum(values['recall_looses']) / len(values['recall_looses'])  # Calculate average recall
         avg_query_time = sum(values['query_time']) / len(values['query_time'])  # Calculate average recall
         avg_orignal_time = sum(values['original_time']) / len(values['original_time'])  # Calculate average recall
         avg_var = sum(values['var']) / len(values['var'])  # Calculate average recall
         
         # Append the calculated averages for each group
-        row_data = list(key) + [avg_time_speedup, avg_recall, avg_query_time, avg_orignal_time, avg_var]
+        row_data = list(key) + [avg_time_speedup, avg_recall, avg_recall_loose,  avg_query_time, avg_orignal_time, avg_var]
         averages.append(row_data)
 
     # Sort by average time_speedup in descending order
-    averages.sort(key=lambda x: x[-5], reverse=True)  # Sort by average_time_speedup (second to last column)
+    averages.sort(key=lambda x: x[-6], reverse=True)  # Sort by average_time_speedup (second to last column)
 
  # Append a newline (empty row) between different dataset groups
     if averages:
@@ -60,7 +63,7 @@ combined_data = []
 root_dir = "/es01/home/lvxg/vdb/VectorDB/benchmarks"
 for subdir, _, files in os.walk(root_dir):
     for file in files:
-        if file == "log.csv":
+        if file == "log_ip.csv" or file == "log_l2.csv":
             input_path = os.path.join(subdir, file)
             process_file(input_path, combined_data)
             # combined_data.extend('\n')
@@ -69,7 +72,8 @@ for subdir, _, files in os.walk(root_dir):
 output_file = "combined_processed_log.csv"
 with open(output_file, 'w', newline='') as outfile:
     writer = csv.writer(outfile)
-    header = ['dataset', 'mode', 'nb', 'nq', 'd', 'nlist', 'nprobe', 'k', 'orderOptimize', 'UnblockSend', 'cut', 'block', 'worker', 'group', 'team', 'ratio', 'teamRatio', 'average_time_speedup', 'average_recall', 'average_query_time', 'average_original_time', 'average_variance']
+    header = ['dataset', 'mode', 'nb', 'nq', 'd', 'nlist', 'nprobe', 'k', 'orderOptimize', 'UnblockSend', 'cut', 'block', 'worker', 'group', 'team', 'ratio', 'teamRatio', 'brute_ratio', 'average_time_speedup', '1-average_recall',
+    '1-average_recall_loose', 'average_query_time', 'average_original_time', 'average_variance']
     writer.writerow(header)
     writer.writerows(combined_data)
 

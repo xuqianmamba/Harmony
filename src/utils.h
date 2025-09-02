@@ -436,7 +436,7 @@ inline std::tuple<std::unique_ptr<float[]>, size_t, int> loadTvecs(const std::st
         }
         for(int i = 1; i < factor; i++) {
             for(int j = 0; j < n * d; j++) {
-                float_vectors[i * n * d + j] = float_vectors[j] + 0.001 * i;
+                float_vectors[i * n * d + j] = float_vectors[j] + 0.1 * i;
             }
             if(i == 1) {
                 // printVector(float_vectors.get() + n * d, n * d, BLUE);

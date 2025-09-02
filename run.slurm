@@ -12,7 +12,7 @@
 mkdir ./memory_total                # ben
 mkdir ./tmp                # ben
 nameflag=`scontrol show hostname $SLURM_JOB_NODELIST`
-echo $nameflag
+# echo $nameflag
 jobflag=`squeue | grep $SLURM_JOB_ID | wc -l`
 # echo $jobflag
 job_command=$(scontrol show job $SLURM_JOB_ID | grep 'Command' | sed 's/.*Command=//')
@@ -79,8 +79,8 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 ##############################################
 #               Run job                      #
 ##############################################
-echo $SLURM_NPROCS
-echo $OMP_NUM_THREADS
+# echo $SLURM_NPROCS
+# echo $OMP_NUM_THREADS
 export OMP_PROC_BIND=spread
 export OMP_PLACES=cores
 # mpirun --bind-to none -n $SLURM_NPROCS ./release/bin/query --benchmarks_path ./benchmarks --dataset $1 $3 $4 --cache --opt_levels OPT_NONE  $2  --warmup_list 10  # 选项-np指定 $SLURM_NPROCS 参数为总核心数，即nodes*tasks
